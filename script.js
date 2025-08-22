@@ -1,4 +1,36 @@
 (function() {
+	// EMERGENCY MODAL KILLER - Available immediately
+	window.emergencyKillModal = function() {
+		const modal = document.getElementById('modal-overlay');
+		if (modal) {
+			modal.hidden = true;
+			modal.style.display = 'none';
+			modal.setAttribute('data-force-hide', 'true');
+			console.log('EMERGENCY: Modal killed immediately');
+			return true;
+		}
+		console.log('No modal found to kill');
+		return false;
+	};
+	
+	// Try to kill modal immediately if it exists
+	if (document.getElementById('modal-overlay')) {
+		window.emergencyKillModal();
+	}
+	
+	// Add global emergency functions immediately
+	window.forceCloseModal = window.emergencyKillModal;
+	window.killModal = function() {
+		const modal = document.getElementById('modal-overlay');
+		if (modal) {
+			modal.hidden = true;
+			modal.style.display = 'none';
+			modal.setAttribute('data-force-hide', 'true');
+			modal.remove();
+			console.log('Modal completely destroyed');
+		}
+	};
+	
 	// DOM element references - will be initialized when DOM is ready
 	let form, titleInput, dateInput, authorInput, slugInput, imageInput, imageAltInput, tagsInput, summaryInput, bodyInput;
 	let imageFileInput, attachmentsInput, importMdInput;
@@ -94,6 +126,15 @@
 		tagSuggestionsEl = document.getElementById('tag-suggestions');
 		notesInput = document.getElementById('notes');
 		toastContainer = document.getElementById('toast-container');
+		
+		// EMERGENCY: Kill any existing modal immediately
+		const modalOverlay = document.getElementById('modal-overlay');
+		if (modalOverlay) {
+			modalOverlay.hidden = true;
+			modalOverlay.style.display = 'none';
+			modalOverlay.setAttribute('data-force-hide', 'true');
+			console.log('EMERGENCY: Modal killed during DOM initialization');
+		}
 	}
 
 	// Initialize the application
@@ -102,11 +143,13 @@
 			// Initialize DOM elements first
 			initializeDOMElements();
 			
-			// Ensure modal is hidden on startup
+			// Ensure modal is hidden on startup - FORCE IT
 			const modalOverlay = document.getElementById('modal-overlay');
 			if (modalOverlay) {
 				modalOverlay.hidden = true;
-				console.log('Modal hidden on startup');
+				modalOverlay.style.display = 'none';
+				modalOverlay.setAttribute('data-force-hide', 'true');
+				console.log('Modal forcefully hidden on startup');
 			}
 			
 			// Set default date to today
@@ -153,9 +196,14 @@
 
 	function openModal(title, contentEl) {
 		try {
+			console.log('openModal called with:', { title, hasContent: !!contentEl });
+			
 			const overlay = document.getElementById('modal-overlay');
 			const closeBtn = document.getElementById('modal-close');
-			if (!overlay || !closeBtn) return;
+			if (!overlay || !closeBtn) {
+				console.error('Modal elements not found:', { overlay: !!overlay, closeBtn: !!closeBtn });
+				return;
+			}
 			
 			// Clear any existing content and set new content
 			document.getElementById('modal-title').textContent = title || 'Modal';
@@ -167,21 +215,35 @@
 			
 			// Show the modal
 			overlay.hidden = false;
+			overlay.style.display = 'grid';
+			overlay.removeAttribute('data-force-hide');
+			console.log('Modal opened:', { title, hidden: overlay.hidden, display: overlay.style.display });
 			
 			// Set up close button handler
 			closeBtn.onclick = () => { 
+				console.log('Close button clicked');
 				overlay.hidden = true; 
+				overlay.style.display = 'none';
+				overlay.setAttribute('data-force-hide', 'true');
 			};
 			
 			// Set up overlay click handler to close modal
 			overlay.addEventListener('click', (e) => { 
-				if (e.target === overlay) overlay.hidden = true; 
+				if (e.target === overlay) {
+					console.log('Overlay clicked, closing modal');
+					overlay.hidden = true; 
+					overlay.style.display = 'none';
+					overlay.setAttribute('data-force-hide', 'true');
+				}
 			}, { once: true });
 			
 			// Add escape key handler
 			const escapeHandler = (e) => {
 				if (e.key === 'Escape') {
+					console.log('Escape key pressed, closing modal');
 					overlay.hidden = true;
+					overlay.style.display = 'none';
+					overlay.setAttribute('data-force-hide', 'true');
 					document.removeEventListener('keydown', escapeHandler);
 				}
 			};
@@ -195,9 +257,15 @@
 
 	function closeModal() {
 		try {
+			console.log('closeModal called');
 			const overlay = document.getElementById('modal-overlay');
 			if (overlay) {
 				overlay.hidden = true;
+				overlay.style.display = 'none';
+				overlay.setAttribute('data-force-hide', 'true');
+				console.log('Modal closed successfully');
+			} else {
+				console.log('No modal overlay found to close');
 			}
 		} catch (error) {
 			console.error('Failed to close modal:', error);
