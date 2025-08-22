@@ -511,10 +511,22 @@ button.primary::before {
 	position: fixed;
 	top: 0; left: 0; right: 0; bottom: 0;
 	background: rgba(45, 24, 16, 0.8);
-	display: grid;
+	display: none !important;
 	place-items: center;
 	z-index: 50;
 	backdrop-filter: blur(4px);
+}
+
+.modal-overlay:not([hidden]) {
+	display: grid !important;
+}
+
+/* Emergency modal killer - force hide if needed */
+.modal-overlay[data-force-hide="true"] {
+	display: none !important;
+	visibility: hidden !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
 }
 
 .modal {

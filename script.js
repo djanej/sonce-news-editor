@@ -1,62 +1,15 @@
 (function() {
-	const form = document.getElementById('news-form');
-	const titleInput = document.getElementById('title');
-	const dateInput = document.getElementById('date');
-	const authorInput = document.getElementById('author');
-	const slugInput = document.getElementById('slug');
-	const imageInput = document.getElementById('image');
-	const imageAltInput = document.getElementById('imageAlt');
-	const tagsInput = document.getElementById('tags');
-	const summaryInput = document.getElementById('summary');
-	const bodyInput = document.getElementById('body');
-
-	const imageFileInput = document.getElementById('imageFile');
-	const attachmentsInput = document.getElementById('attachments');
-	const importMdInput = document.getElementById('importMd');
-
-	const previewBtn = document.getElementById('preview-btn');
-	const downloadBtn = document.getElementById('download-btn');
-	const copyJsonBtn = document.getElementById('copy-json-btn');
-	const downloadJsonBtn = document.getElementById('download-json-btn');
-	const previewContent = document.getElementById('preview-content');
-	const livePreviewCheckbox = document.getElementById('live-preview');
-
-	const connectRepoBtn = document.getElementById('connect-repo-btn');
-	const repoStatusEl = document.getElementById('repo-status');
-	const saveRepoBtn = document.getElementById('save-repo-btn');
-	const rebuildIndexBtn = document.getElementById('rebuild-index-btn');
-
-	const templateSelect = document.getElementById('template-select');
-	const applyTemplateBtn = document.getElementById('apply-template-btn');
-	const deleteTemplateBtn = document.getElementById('delete-template-btn');
-	const saveTemplateBtn = document.getElementById('save-template-btn');
-	const templateNameInput = document.getElementById('template-name');
-
-	const addDraftBtn = document.getElementById('add-draft-btn');
-	const clearDraftsBtn = document.getElementById('clear-drafts-btn');
-	const downloadZipBtn = document.getElementById('download-zip-btn');
-	const draftsCountEl = document.getElementById('drafts-count');
-
-	const insertHeroBtn = document.getElementById('insert-hero-btn');
-	const insertAttachmentsBtn = document.getElementById('insert-attachments-btn');
-
-	// Toolbar buttons
-	const toolbar = document.querySelector('.toolbar-left');
-
-	// New UI elements
-	const exportBundleBtn = document.getElementById('export-bundle-btn');
-	const saveVersionBtn = document.getElementById('save-version-btn');
-	const historyBtn = document.getElementById('history-btn');
-	const cheatSheetBtn = document.getElementById('cheat-sheet-btn');
-	const dropZone = document.getElementById('drop-zone');
-	const dropOverlay = document.getElementById('drop-overlay');
-	const restoreBanner = document.getElementById('restore-banner');
-	const restoreBtn = document.getElementById('restore-btn');
-	const dismissRestoreBtn = document.getElementById('dismiss-restore-btn');
-	const lintPanel = document.getElementById('lint-panel');
-	const tagSuggestionsEl = document.getElementById('tag-suggestions');
-	const notesInput = document.getElementById('notes');
-	const toastContainer = document.getElementById('toast-container');
+	// DOM element references - will be initialized when DOM is ready
+	let form, titleInput, dateInput, authorInput, slugInput, imageInput, imageAltInput, tagsInput, summaryInput, bodyInput;
+	let imageFileInput, attachmentsInput, importMdInput;
+	let previewBtn, downloadBtn, copyJsonBtn, downloadJsonBtn, previewContent, livePreviewCheckbox;
+	let connectRepoBtn, repoStatusEl, saveRepoBtn, rebuildIndexBtn;
+	let templateSelect, applyTemplateBtn, deleteTemplateBtn, saveTemplateBtn, templateNameInput;
+	let addDraftBtn, clearDraftsBtn, downloadZipBtn, draftsCountEl;
+	let insertHeroBtn, insertAttachmentsBtn;
+	let toolbar;
+	let exportBundleBtn, saveVersionBtn, historyBtn, cheatSheetBtn, dropZone, dropOverlay;
+	let restoreBanner, restoreBtn, dismissRestoreBtn, lintPanel, tagSuggestionsEl, notesInput, toastContainer;
 
 	// State for FS Access API
 	let repoDirHandle = null;
@@ -81,9 +34,81 @@
 		}
 	}
 
+	// Initialize DOM element references
+	function initializeDOMElements() {
+		form = document.getElementById('news-form');
+		titleInput = document.getElementById('title');
+		dateInput = document.getElementById('date');
+		authorInput = document.getElementById('author');
+		slugInput = document.getElementById('slug');
+		imageInput = document.getElementById('image');
+		imageAltInput = document.getElementById('imageAlt');
+		tagsInput = document.getElementById('tags');
+		summaryInput = document.getElementById('summary');
+		bodyInput = document.getElementById('body');
+
+		imageFileInput = document.getElementById('imageFile');
+		attachmentsInput = document.getElementById('attachments');
+		importMdInput = document.getElementById('importMd');
+
+		previewBtn = document.getElementById('preview-btn');
+		downloadBtn = document.getElementById('download-btn');
+		copyJsonBtn = document.getElementById('copy-json-btn');
+		downloadJsonBtn = document.getElementById('download-json-btn');
+		previewContent = document.getElementById('preview-content');
+		livePreviewCheckbox = document.getElementById('live-preview');
+
+		connectRepoBtn = document.getElementById('connect-repo-btn');
+		repoStatusEl = document.getElementById('repo-status');
+		saveRepoBtn = document.getElementById('save-repo-btn');
+		rebuildIndexBtn = document.getElementById('rebuild-index-btn');
+
+		templateSelect = document.getElementById('template-select');
+		applyTemplateBtn = document.getElementById('apply-template-btn');
+		deleteTemplateBtn = document.getElementById('delete-template-btn');
+		saveTemplateBtn = document.getElementById('save-template-btn');
+		templateNameInput = document.getElementById('template-name');
+
+		addDraftBtn = document.getElementById('add-draft-btn');
+		clearDraftsBtn = document.getElementById('clear-drafts-btn');
+		downloadZipBtn = document.getElementById('download-zip-btn');
+		draftsCountEl = document.getElementById('drafts-count');
+
+		insertHeroBtn = document.getElementById('insert-hero-btn');
+		insertAttachmentsBtn = document.getElementById('insert-attachments-btn');
+
+		// Toolbar buttons
+		toolbar = document.querySelector('.toolbar-left');
+
+		// New UI elements
+		exportBundleBtn = document.getElementById('export-bundle-btn');
+		saveVersionBtn = document.getElementById('save-version-btn');
+		historyBtn = document.getElementById('history-btn');
+		cheatSheetBtn = document.getElementById('cheat-sheet-btn');
+		dropZone = document.getElementById('drop-zone');
+		dropOverlay = document.getElementById('drop-overlay');
+		restoreBanner = document.getElementById('restore-banner');
+		restoreBtn = document.getElementById('restore-btn');
+		dismissRestoreBtn = document.getElementById('dismiss-restore-btn');
+		lintPanel = document.getElementById('lint-panel');
+		tagSuggestionsEl = document.getElementById('tag-suggestions');
+		notesInput = document.getElementById('notes');
+		toastContainer = document.getElementById('toast-container');
+	}
+
 	// Initialize the application
 	function initializeApp() {
 		try {
+			// Initialize DOM elements first
+			initializeDOMElements();
+			
+			// Ensure modal is hidden on startup
+			const modalOverlay = document.getElementById('modal-overlay');
+			if (modalOverlay) {
+				modalOverlay.hidden = true;
+				console.log('Modal hidden on startup');
+			}
+			
 			// Set default date to today
 			const today = new Date();
 			const yyyy = today.getFullYear();
@@ -531,7 +556,7 @@
 			toast('JSON copied to clipboard', 'success');
 		} catch (err) {
 			console.error(err);
-			alert('Failed to copy to clipboard.');
+			toast('Failed to copy to clipboard', 'error');
 		}
 	}
 
@@ -724,18 +749,18 @@
 	}
 
 	connectRepoBtn.addEventListener('click', async () => {
-		if (!apiSupported()) { alert('File System Access API is not supported in this browser.'); return; }
+		if (!apiSupported()) { toast('File System Access API is not supported in this browser', 'error'); return; }
 		try {
 			repoDirHandle = await window.showDirectoryPicker({ id: 'sonce-news-repo' });
 			const ok = await verifyPermission(repoDirHandle, true);
-			if (!ok) { repoDirHandle = null; alert('Permission denied.'); return; }
+			if (!ok) { repoDirHandle = null; toast('Permission denied', 'error'); return; }
 			await ensureDir(repoDirHandle, ['content', 'news']);
 			await ensureDir(repoDirHandle, ['static', 'uploads', 'news']);
 			repoStatusEl.textContent = `Connected: ${repoDirHandle.name}`;
 			saveRepoBtn.disabled = false;
 			rebuildIndexBtn.disabled = false;
 			toast('Repo connected', 'success');
-		} catch (err) { console.error(err); alert('Failed to connect to folder.'); }
+		} catch (err) { console.error(err); toast('Failed to connect to folder', 'error'); }
 	});
 
 	async function copyAttachmentToRepo(file, yyyy, mm, date, baseName) {
@@ -783,13 +808,13 @@
 	insertHeroBtn.addEventListener('click', () => {
 		const url = imageInput.value.trim();
 		const alt = imageAltInput.value.trim() || titleInput.value.trim();
-		if (!url) { alert('No hero image URL set.'); return; }
+		if (!url) { toast('No hero image URL set', 'error'); return; }
 		insertAtCursor(bodyInput, `![${alt}](${url})\n\n`, '');
 		toast('Hero image inserted');
 	});
 
 	insertAttachmentsBtn.addEventListener('click', async () => {
-		if (!attachmentsInput.files || attachmentsInput.files.length === 0) { alert('No attachments selected.'); return; }
+		if (!attachmentsInput.files || attachmentsInput.files.length === 0) { toast('No attachments selected', 'error'); return; }
 		const date = dateInput.value;
 		const yyyy = date.slice(0, 4);
 		const mm = date.slice(5, 7);
@@ -910,7 +935,7 @@
 		const filename = getVersionedFilename(base, existing);
 		drafts.push({ filename, content: md });
 		saveDrafts(drafts);
-		alert(`Saved as draft: ${filename}`);
+		toast(`Saved as draft: ${filename}`, 'success');
 	});
 
 	clearDraftsBtn.addEventListener('click', () => {
@@ -920,7 +945,7 @@
 
 	downloadZipBtn.addEventListener('click', () => {
 		const drafts = loadDrafts();
-		if (drafts.length === 0) { alert('No drafts to download.'); return; }
+		if (drafts.length === 0) { toast('No drafts to download', 'error'); return; }
 		const encoder = new TextEncoder();
 		const files = drafts.flatMap(d => {
 			const html = renderMarkdown((d.content || '').replace(/^---[\s\S]*?---\n?/, ''));
@@ -980,12 +1005,12 @@
 
 	saveTemplateBtn.addEventListener('click', () => {
 		const name = templateNameInput.value.trim();
-		if (!name) { alert('Enter a template name.'); return; }
+		if (!name) { toast('Enter a template name', 'error'); return; }
 		const templates = loadTemplates();
 		templates.push({ name, payload: currentFormToTemplatePayload() });
 		saveTemplates(templates);
 		templateNameInput.value = '';
-		alert('Template saved.');
+		toast('Template saved', 'success');
 	});
 	applyTemplateBtn.addEventListener('click', () => {
 		const idx = templateSelect.value;
@@ -1006,7 +1031,7 @@
 
 	// Repo save and index rebuild
 	saveRepoBtn.addEventListener('click', async () => {
-		if (!repoDirHandle) { alert('Connect a repo folder first.'); return; }
+		if (!repoDirHandle) { toast('Connect a repo folder first', 'error'); return; }
 		const md = buildMarkdown();
 		if (!md) return;
 		try {
@@ -1042,13 +1067,13 @@
 			repoStatusEl.textContent = `Saved: ${filename}`;
 			toast('Saved to repo', 'success');
 			await saveSnapshot('Auto snapshot on Save to Repo');
-		} catch (err) { console.error(err); alert('Save failed. See console for details.'); }
+		} catch (err) { console.error(err); toast('Save failed. See console for details', 'error'); }
 	});
 
 	rebuildIndexBtn.addEventListener('click', async () => {
-		if (!repoDirHandle) { alert('Connect a repo folder first.'); return; }
+		if (!repoDirHandle) { toast('Connect a repo folder first', 'error'); return; }
 		try { await rebuildIndex(repoDirHandle); toast('Index rebuilt', 'success'); }
-		catch (err) { console.error(err); alert('Rebuild failed. See console for details.'); }
+		catch (err) { console.error(err); toast('Rebuild failed. See console for details', 'error'); }
 	});
 
 	async function updateIndexJson(rootHandle, filenameJustSaved) {
@@ -1501,6 +1526,25 @@
 				console.log('No modal found');
 			}
 		};
+		
+		// Add emergency modal killer
+		window.killModal = () => {
+			const overlay = document.getElementById('modal-overlay');
+			if (overlay) {
+				overlay.hidden = true;
+				overlay.style.display = 'none';
+				overlay.remove();
+				console.log('Modal completely destroyed');
+			}
+		};
+		
+		// Add keyboard shortcut to force close modal (Ctrl+Shift+M)
+		document.addEventListener('keydown', (e) => {
+			if (e.ctrlKey && e.shiftKey && e.key === 'M') {
+				e.preventDefault();
+				window.forceCloseModal();
+			}
+		});
 	});
 
 	// Fallback initialization if DOMContentLoaded already fired
