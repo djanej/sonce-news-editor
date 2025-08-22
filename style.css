@@ -515,10 +515,17 @@ button.primary::before {
 	place-items: center;
 	z-index: 50;
 	backdrop-filter: blur(4px);
+	/* Force hide by default */
+	visibility: hidden !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
 }
 
 .modal-overlay:not([hidden]) {
 	display: grid !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+	pointer-events: auto !important;
 }
 
 /* Emergency modal killer - force hide if needed */
@@ -527,6 +534,9 @@ button.primary::before {
 	visibility: hidden !important;
 	opacity: 0 !important;
 	pointer-events: none !important;
+	/* Additional force hiding */
+	transform: translateX(-100vw) !important;
+	clip-path: inset(0 100% 0 0) !important;
 }
 
 .modal {

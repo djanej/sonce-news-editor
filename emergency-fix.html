@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>🚨 EMERGENCY MODAL FIX</title>
+	<style>
+		body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; background: #0f172a; color: #e5e7eb; }
+		.emergency { background: #dc2626; color: white; padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center; font-size: 18px; }
+		.status { padding: 16px; border-radius: 8px; margin: 16px 0; border: 2px solid; }
+		.success { background: #dcfce7; color: #166534; border-color: #22c55e; }
+		.error { background: #fee2e2; color: #991b1b; border-color: #ef4444; }
+		.info { background: #dbeafe; color: #1e40af; border-color: #3b82f6; }
+		button { padding: 12px 24px; border-radius: 8px; border: 2px solid #334155; background: #0b1220; color: #e5e7eb; cursor: pointer; margin: 8px; font-size: 16px; }
+		button:hover { background: #1e293b; }
+		button.emergency { background: #dc2626; color: white; border-color: #dc2626; }
+		button.emergency:hover { background: #b91c1c; }
+		.console { background: #1e293b; padding: 16px; border-radius: 8px; font-family: monospace; margin: 16px 0; }
+		.shortcuts { background: #334155; padding: 16px; border-radius: 8px; margin: 16px 0; }
+	</style>
+</head>
+<body>
+	<h1>🚨 EMERGENCY MODAL FIX</h1>
+	
+	<div class="emergency">
+		<strong>IF YOU'RE SEEING A MODAL POPUP THAT SAYS "Modal" AND CAN'T CLOSE IT:</strong>
+	</div>
+	
+	<div class="status info">
+		<h3>Quick Fix Steps:</h3>
+		<ol>
+			<li><strong>Click the "🚨 EMERGENCY KILL" button below</strong></li>
+			<li><strong>Press Ctrl+Shift+M</strong> on your keyboard</li>
+			<li><strong>Press Escape</strong> key</li>
+			<li><strong>Open browser console (F12) and type:</strong> <code>emergencyKillModal()</code></li>
+		</ol>
+	</div>
+	
+	<div style="text-align: center; margin: 30px 0;">
+		<button onclick="emergencyKillModal()" class="emergency">🚨 EMERGENCY KILL MODAL</button>
+		<button onclick="checkModalStatus()">Check Modal Status</button>
+		<button onclick="forceCloseModal()">Force Close</button>
+		<button onclick="killModal()">Destroy Completely</button>
+	</div>
+	
+	<div id="status"></div>
+	
+	<div class="shortcuts">
+		<h3>Keyboard Shortcuts:</h3>
+		<ul>
+			<li><strong>Ctrl+Shift+M</strong> - Force close modal</li>
+			<li><strong>Escape</strong> - Close modal</li>
+		</ul>
+	</div>
+	
+	<div class="console">
+		<h3>Console Commands:</h3>
+		<p>Open browser console (F12) and try these commands:</p>
+		<ul>
+			<li><code>emergencyKillModal()</code> - Kill modal immediately</li>
+			<li><code>forceCloseModal()</code> - Force close modal</li>
+			<li><code>killModal()</code> - Destroy modal completely</li>
+		</ul>
+	</div>
+	
+	<div class="status info">
+		<h3>What This Does:</h3>
+		<p>This page provides emergency functions to kill the problematic modal popup. The modal is likely appearing due to a JavaScript error or initialization issue in the main application.</p>
+	</div>
+	
+	<div style="text-align: center; margin: 30px 0;">
+		<a href="index.html" style="color: #3b82f6; text-decoration: none; font-size: 18px;">← Back to Main Application</a>
+	</div>
+
+	<script>
+		// Emergency modal killer - available immediately
+		window.emergencyKillModal = function() {
+			const modal = document.getElementById('modal-overlay');
+			if (modal) {
+				modal.hidden = true;
+				modal.style.display = 'none';
+				modal.setAttribute('data-force-hide', 'true');
+				console.log('EMERGENCY: Modal killed immediately');
+				checkModalStatus();
+				return true;
+			}
+			console.log('No modal found to kill');
+			checkModalStatus();
+			return false;
+		};
+		
+		// Force close modal
+		window.forceCloseModal = function() {
+			const modal = document.getElementById('modal-overlay');
+			if (modal) {
+				modal.hidden = true;
+				modal.style.display = 'none';
+				modal.setAttribute('data-force-hide', 'true');
+				console.log('Modal force closed');
+				checkModalStatus();
+			} else {
+				console.log('No modal found');
+				checkModalStatus();
+			}
+		};
+		
+		// Kill modal completely
+		window.killModal = function() {
+			const modal = document.getElementById('modal-overlay');
+			if (modal) {
+				modal.hidden = true;
+				modal.style.display = 'none';
+				modal.setAttribute('data-force-hide', 'true');
+				modal.remove();
+				console.log('Modal completely destroyed');
+				checkModalStatus();
+			} else {
+				console.log('No modal found');
+				checkModalStatus();
+			}
+		};
+		
+		// Check modal status
+		function checkModalStatus() {
+			const status = document.getElementById('status');
+			const modal = document.getElementById('modal-overlay');
+			
+			if (!modal) {
+				status.innerHTML = '<div class="status success">✅ No modal found - problem solved!</div>';
+				return;
+			}
+			
+			const isHidden = modal.hidden || modal.style.display === 'none' || modal.hasAttribute('data-force-hide');
+			
+			if (isHidden) {
+				status.innerHTML = '<div class="status success">✅ Modal is properly hidden</div>';
+			} else {
+				status.innerHTML = '<div class="status error">❌ Modal is still visible - click EMERGENCY KILL!</div>';
+			}
+		}
+		
+		// Add keyboard shortcuts
+		document.addEventListener('keydown', (e) => {
+			if (e.ctrlKey && e.shiftKey && e.key === 'M') {
+				e.preventDefault();
+				emergencyKillModal();
+			}
+			if (e.key === 'Escape') {
+				forceCloseModal();
+			}
+		});
+		
+		// Try to kill modal immediately if it exists
+		if (document.getElementById('modal-overlay')) {
+			emergencyKillModal();
+		}
+		
+		// Check status on load
+		document.addEventListener('DOMContentLoaded', () => {
+			setTimeout(checkModalStatus, 1000);
+		});
+		
+		// Also check immediately
+		setTimeout(checkModalStatus, 100);
+	</script>
+</body>
+</html>
