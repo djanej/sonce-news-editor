@@ -162,12 +162,20 @@
 			// Load autosaved content if available
 			loadAutosave();
 
-			// Initialize other components
-			refreshTemplateSelect();
-			updateDraftsCount();
+		// Initialize other components
+		refreshTemplateSelect();
+		updateDraftsCount();
 
-			// Set up autosave
-			setupAutosave();
+		// Set up autosave
+		setupAutosave();
+		
+		// Final safety check: ensure overlay is hidden
+		setTimeout(() => {
+			if (dropOverlay && !dropOverlay.hidden) {
+				console.log('Final safety check: hiding overlay');
+				showDropOverlay(false);
+			}
+		}, 100);
 		} catch (error) {
 			console.error('Failed to initialize app:', error);
 			toast('Failed to initialize application', 'error');
@@ -1352,12 +1360,51 @@
 	summaryInput.addEventListener('input', renderLintPanel);
 
 	// Drag & drop and paste
-	function showDropOverlay(show) { if (!dropOverlay) return; dropOverlay.hidden = !show; }
+	function showDropOverlay(show) { 
+		if (!dropOverlay) return; 
+		dropOverlay.hidden = !show; 
+		console.log('Drop overlay:', show ? 'shown' : 'hidden');
+	}
+	
+	// Ensure overlay is hidden on startup
+	showDropOverlay(false);
+	
+	// Additional safety: hide overlay on various events
+	window.addEventListener('blur', () => showDropOverlay(false));
+	window.addEventListener('error', () => showDropOverlay(false));
+	window.addEventListener('load', () => showDropOverlay(false));
+	
+	// Force hide button
+	const forceHideBtn = document.getElementById('force-hide-overlay');
+	if (forceHideBtn) {
+		forceHideBtn.addEventListener('click', () => {
+			showDropOverlay(false);
+			toast('Overlay manually hidden', 'info');
+		});
+	}
+	
+	// Keyboard shortcut to force hide overlay (Ctrl+Shift+H)
+	document.addEventListener('keydown', (e) => {
+		if (e.ctrlKey && e.shiftKey && e.key === 'H') {
+			showDropOverlay(false);
+			toast('Overlay hidden with keyboard shortcut', 'info');
+		}
+	});
+	
 	['dragenter','dragover'].forEach(evt => {
-		document.addEventListener(evt, (e) => { e.preventDefault(); showDropOverlay(true); dropZone.classList.add('dragover'); });
+		document.addEventListener(evt, (e) => { 
+			e.preventDefault(); 
+			showDropOverlay(true); 
+			dropZone.classList.add('dragover'); 
+		});
 	});
 	['dragleave','drop'].forEach(evt => {
-		document.addEventListener(evt, (e) => { e.preventDefault(); if (evt === 'drop') return; showDropOverlay(false); dropZone.classList.remove('dragover'); });
+		document.addEventListener(evt, (e) => { 
+			e.preventDefault(); 
+			if (evt === 'drop') return; 
+			showDropOverlay(false); 
+			dropZone.classList.remove('dragover'); 
+		});
 	});
 	dropZone.addEventListener('drop', async (e) => {
 		showDropOverlay(false); dropZone.classList.remove('dragover');
