@@ -101,6 +101,15 @@ button.primary:hover { filter: brightness(0.95); }
 .repo-actions { margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 12px; }
 .repo-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
 
+.toolbar { display: flex; justify-content: space-between; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+.toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 8px; }
+.toolbar button { padding: 6px 10px; }
+
+.templates { margin: 12px 0; border-top: 1px dashed var(--border); padding-top: 10px; }
+.templates-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+
+.drafts-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+
 @media (max-width: 900px) {
 	.container { grid-template-columns: 1fr; }
 	.field-group { grid-template-columns: 1fr; }

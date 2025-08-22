@@ -75,8 +75,48 @@
 				</div>
 
 				<div class="field">
+					<label for="attachments">Additional Image Attachments</label>
+					<input type="file" id="attachments" name="attachments" accept="image/*" multiple />
+					<p class="hint">Optional. These will be inserted and saved to /static/uploads/news/YYYY/MM/</p>
+				</div>
+
+				<div class="toolbar">
+					<div class="toolbar-left">
+						<button type="button" data-md="h1">H1</button>
+						<button type="button" data-md="h2">H2</button>
+						<button type="button" data-md="h3">H3</button>
+						<button type="button" data-md="bold"><strong>B</strong></button>
+						<button type="button" data-md="italic"><em>I</em></button>
+						<button type="button" data-md="ul">• List</button>
+						<button type="button" data-md="ol">1. List</button>
+						<button type="button" data-md="quote">“ Quote”</button>
+						<button type="button" data-md="code">Code</button>
+						<button type="button" data-md="link">Link</button>
+						<button type="button" id="insert-hero-btn">Insert Hero</button>
+						<button type="button" id="insert-attachments-btn">Insert Attachments</button>
+					</div>
+					<div class="toolbar-right">
+						<label class="hint"><input type="checkbox" id="live-preview" /> Live Preview</label>
+					</div>
+				</div>
+
+				<div class="field">
 					<label for="body">Body Content (Markdown)</label>
 					<textarea id="body" name="body" rows="14" placeholder="Write your news content here using Markdown..."></textarea>
+				</div>
+
+				<div class="templates">
+					<div class="templates-row">
+						<select id="template-select">
+							<option value="">Select template…</option>
+						</select>
+						<button type="button" id="apply-template-btn">Apply</button>
+						<button type="button" id="delete-template-btn">Delete</button>
+					</div>
+					<div class="templates-row">
+						<input type="text" id="template-name" placeholder="Template name" />
+						<button type="button" id="save-template-btn">Save as New</button>
+					</div>
 				</div>
 
 				<div class="actions">
@@ -84,6 +124,13 @@
 					<button type="button" id="download-btn" class="primary">Download Markdown</button>
 					<button type="button" id="copy-json-btn">Copy JSON Entry</button>
 					<button type="button" id="download-json-btn">Download JSON Entry</button>
+				</div>
+
+				<div class="drafts-actions">
+					<button type="button" id="add-draft-btn">Add to Drafts</button>
+					<button type="button" id="clear-drafts-btn">Clear Drafts</button>
+					<button type="button" id="download-zip-btn">Download Drafts ZIP</button>
+					<span id="drafts-count" class="hint">0 drafts</span>
 				</div>
 
 				<div class="repo-actions">
