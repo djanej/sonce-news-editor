@@ -211,7 +211,12 @@
 	</div>
 
 	<div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
-	<div id="drop-overlay" class="drop-overlay" hidden>Drop files to insert…</div>
+	<div id="drop-overlay" class="drop-overlay" hidden>
+		<div class="drop-overlay-content">
+			<span>Drop files to insert…</span>
+			<button type="button" id="force-hide-overlay" class="force-hide-btn">×</button>
+		</div>
+	</div>
 
 	<script src="script.js"></script>
 </body>
