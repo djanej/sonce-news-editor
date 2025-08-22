@@ -12,6 +12,14 @@
 		<p class="subtitle">Generate Markdown news posts with YAML frontmatter</p>
 	</header>
 
+	<div id="restore-banner" class="restore-banner" hidden aria-live="polite" role="status">
+		<span>Unsaved draft found.</span>
+		<div class="restore-actions">
+			<button type="button" id="restore-btn">Restore</button>
+			<button type="button" id="dismiss-restore-btn">Dismiss</button>
+		</div>
+	</div>
+
 	<main class="container">
 		<section class="editor">
 			<form id="news-form" novalidate>
@@ -42,6 +50,8 @@
 						<input type="text" id="tags" name="tags" placeholder="Comma separated, e.g. events, community" />
 					</div>
 				</div>
+
+				<div id="tag-suggestions" class="tag-suggestions" aria-live="polite"></div>
 
 				<div class="field">
 					<label for="summary">Summary</label>
@@ -80,6 +90,10 @@
 					<p class="hint">Optional. These will be inserted and saved to /static/uploads/news/YYYY/MM/</p>
 				</div>
 
+				<div id="drop-zone" class="drop-zone" aria-label="Drop images here or paste (Ctrl+V)">
+					<p>Drag & drop images here or paste (Ctrl+V)</p>
+				</div>
+
 				<div class="toolbar">
 					<div class="toolbar-left">
 						<button type="button" data-md="h1">H1</button>
@@ -97,6 +111,8 @@
 					</div>
 					<div class="toolbar-right">
 						<label class="hint"><input type="checkbox" id="live-preview" /> Live Preview</label>
+						<button type="button" id="cheat-sheet-btn" title="Markdown cheat sheet">Cheat Sheet</button>
+						<button type="button" id="history-btn" title="Version history">History</button>
 					</div>
 				</div>
 
@@ -122,8 +138,17 @@
 				<div class="actions">
 					<button type="button" id="preview-btn">Preview</button>
 					<button type="button" id="download-btn" class="primary">Download Markdown</button>
+					<button type="button" id="export-bundle-btn">Export Bundle</button>
+					<button type="button" id="save-version-btn">Save Version</button>
 					<button type="button" id="copy-json-btn">Copy JSON Entry</button>
 					<button type="button" id="download-json-btn">Download JSON Entry</button>
+				</div>
+
+				<div id="lint-panel" class="lint-panel" aria-live="polite"></div>
+
+				<div class="field">
+					<label for="notes">Internal Notes (not exported)</label>
+					<textarea id="notes" rows="3" placeholder="Add private notes…"></textarea>
 				</div>
 
 				<div class="drafts-actions">
@@ -161,6 +186,19 @@
 	<footer class="app-footer">
 		<p>Made for Sonce — Local Markdown generator. No uploads, all in your browser.</p>
 	</footer>
+
+	<div id="modal-overlay" class="modal-overlay" hidden>
+		<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+			<div class="modal-header">
+				<h3 id="modal-title">Modal</h3>
+				<button type="button" id="modal-close">×</button>
+			</div>
+			<div id="modal-body" class="modal-body"></div>
+		</div>
+	</div>
+
+	<div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+	<div id="drop-overlay" class="drop-overlay" hidden>Drop files to insert…</div>
 
 	<script src="script.js"></script>
 </body>

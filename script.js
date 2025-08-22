@@ -43,6 +43,21 @@
 	// Toolbar buttons
 	const toolbar = document.querySelector('.toolbar-left');
 
+	// New UI elements
+	const exportBundleBtn = document.getElementById('export-bundle-btn');
+	const saveVersionBtn = document.getElementById('save-version-btn');
+	const historyBtn = document.getElementById('history-btn');
+	const cheatSheetBtn = document.getElementById('cheat-sheet-btn');
+	const dropZone = document.getElementById('drop-zone');
+	const dropOverlay = document.getElementById('drop-overlay');
+	const restoreBanner = document.getElementById('restore-banner');
+	const restoreBtn = document.getElementById('restore-btn');
+	const dismissRestoreBtn = document.getElementById('dismiss-restore-btn');
+	const lintPanel = document.getElementById('lint-panel');
+	const tagSuggestionsEl = document.getElementById('tag-suggestions');
+	const notesInput = document.getElementById('notes');
+	const toastContainer = document.getElementById('toast-container');
+
 	// State for FS Access API
 	let repoDirHandle = null;
 	let userEditedSlug = false;
@@ -50,6 +65,51 @@
 	// Drafts state in localStorage
 	const DRAFTS_KEY = 'sonce-news-drafts';
 	const TEMPLATES_KEY = 'sonce-news-templates';
+	const AUTOSAVE_KEY = 'sonce:news-editor:auto:v1';
+
+	// Assets tracked for export bundle (in-memory)
+	const trackedAssets = []; // { file: File|Blob, name: string, alt: string }
+
+	function toast(message, type = 'info', timeoutMs = 2500) {
+		if (!toastContainer) return;
+		const t = document.createElement('div');
+		t.className = `toast ${type}`;
+		t.textContent = message;
+		toastContainer.appendChild(t);
+		setTimeout(() => { t.remove(); }, timeoutMs);
+	}
+
+	function openModal(title, contentEl) {
+		const overlay = document.getElementById('modal-overlay');
+		if (!overlay) return;
+		document.getElementById('modal-title').textContent = title || '';
+		const body = document.getElementById('modal-body');
+		body.innerHTML = '';
+		body.appendChild(contentEl);
+		overlay.hidden = false;
+		document.getElementById('modal-close').onclick = () => { overlay.hidden = true; };
+		overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.hidden = true; }, { once: true });
+	}
+
+	function quickPrompt(label, defaultValue = '') {
+		return new Promise((resolve) => {
+			const wrap = document.createElement('div');
+			wrap.innerHTML = `
+				<label style="display:block; font-weight:600; margin-bottom:6px;">${label}</label>
+				<input id="__prompt_input" type="text" value="${defaultValue.replace(/"/g, '&quot;')}" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #334155; background:#0b1220; color:#e5e7eb;" />
+				<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
+					<button id="__prompt_cancel" type="button">Cancel</button>
+					<button id="__prompt_ok" type="button" class="primary">OK</button>
+				</div>
+			`;
+			openModal('Input', wrap);
+			const overlay = document.getElementById('modal-overlay');
+			const input = wrap.querySelector('#__prompt_input');
+			setTimeout(() => input.focus(), 0);
+			wrap.querySelector('#__prompt_cancel').onclick = () => { overlay.hidden = true; resolve(null); };
+			wrap.querySelector('#__prompt_ok').onclick = () => { const v = input.value.trim(); overlay.hidden = true; resolve(v || defaultValue); };
+		});
+	}
 
 	function loadDrafts() {
 		try { return JSON.parse(localStorage.getItem(DRAFTS_KEY) || '[]'); } catch { return []; }
@@ -82,6 +142,19 @@
 	const dd = String(today.getDate()).padStart(2, '0');
 	dateInput.value = `${yyyy}-${mm}-${dd}`;
 
+	function transliterateToAscii(input) {
+		const map = {
+			'а':'a','б':'b','в':'v','г':'h','ґ':'g','д':'d','е':'e','є':'ie','ж':'zh','з':'z','и':'y','і':'i','ї':'i','й':'i','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'kh','ц':'ts','ч':'ch','ш':'sh','щ':'shch','ь':'','ю':'iu','я':'ia',
+			'А':'A','Б':'B','В':'V','Г':'H','Ґ':'G','Д':'D','Е':'E','Є':'Ye','Ж':'Zh','З':'Z','И':'Y','І':'I','Ї':'I','Й':'I','К':'K','Л':'L','М':'M','Н':'N','О':'O','П':'P','Р':'R','С':'S','Т':'T','У':'U','Ф':'F','Х':'Kh','Ц':'Ts','Ч':'Ch','Ш':'Sh','Щ':'Shch','Ь':'','Ю':'Yu','Я':'Ya'
+		};
+		return input.split('').map(ch => map[ch] || ch).join('');
+	}
+
+	function removeStopWords(text) {
+		const stop = new Set(['a','an','the','and','or','but','of','for','in','on','to','from','with','by','at','as','is','are','be','this','that','these','those','it','its','was','were','has','have','had','will','can','do','over']);
+		return text.split(/\s+/).filter(w => !stop.has(w)).join(' ');
+	}
+
 	function slugify(text) {
 		return text
 			.toString()
@@ -91,6 +164,11 @@
 			.replace(/[^a-z0-9]+/g, '-')
 			.replace(/(^-|-$)+/g, '')
 			.substring(0, 80);
+	}
+
+	function smartSlug(text) {
+		const t = transliterateToAscii(text || '').replace(/[^\w\s-]/g, ' ');
+		return slugify(removeStopWords(t));
 	}
 
 	function parseTags(input) {
@@ -154,8 +232,8 @@
 
 	function getEffectiveSlug() {
 		const explicit = slugInput.value.trim();
-		if (explicit) return slugify(explicit);
-		return slugify(titleInput.value.trim());
+		if (explicit) return smartSlug(explicit);
+		return smartSlug(titleInput.value.trim());
 	}
 
 	function isValidUrl(value) {
@@ -262,6 +340,7 @@
 		a.click();
 		document.body.removeChild(a);
 		URL.revokeObjectURL(url);
+		toast('Markdown downloaded', 'success');
 	}
 
 	function downloadJsonEntry() {
@@ -276,6 +355,7 @@
 		a.click();
 		document.body.removeChild(a);
 		URL.revokeObjectURL(url);
+		toast('JSON entry downloaded', 'success');
 	}
 
 	async function copyJsonEntry() {
@@ -283,7 +363,7 @@
 		const json = JSON.stringify(entry, null, 2);
 		try {
 			await navigator.clipboard.writeText(json);
-			alert('JSON copied to clipboard');
+			toast('JSON copied to clipboard', 'success');
 		} catch (err) {
 			console.error(err);
 			alert('Failed to copy to clipboard.');
@@ -301,6 +381,7 @@
 			.replace(/`([^`]+)`/g, '<code>$1</code>')
 			.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
 			.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+			.replace(/!\[(.*?)\]\((.*?)\)/g, (m, alt, src) => `<img src="${src}" alt="${alt}"/>`)
 			.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1<\/a>');
 
 		// Lists
@@ -317,7 +398,7 @@
 		// Paragraphs
 		html = html
 			.split(/\n{2,}/)
-			.map(block => /<h\d|<ul>|<ol>|<pre>|<blockquote>/.test(block) ? block : `<p>${block.replace(/\n/g, '<br/>')}</p>`)
+			.map(block => /<h\d|<ul>|<ol>|<pre>|<blockquote>|<img|<a /.test(block) ? block : `<p>${block.replace(/\n/g, '<br/>')}</p>`)
 			.join('\n');
 
 		return html;
@@ -399,8 +480,9 @@
 			slugInput.value = nameMatch[2];
 			userEditedSlug = true;
 		} else if (attrs.title) {
-			slugInput.value = slugify(attrs.title);
+			slugInput.value = smartSlug(attrs.title);
 		}
+		toast('Markdown imported', 'success');
 	});
 
 	// FS Access helpers
@@ -458,6 +540,7 @@
 			repoStatusEl.textContent = `Connected: ${repoDirHandle.name}`;
 			saveRepoBtn.disabled = false;
 			rebuildIndexBtn.disabled = false;
+			toast('Repo connected', 'success');
 		} catch (err) { console.error(err); alert('Failed to connect to folder.'); }
 	});
 
@@ -508,6 +591,7 @@
 		const alt = imageAltInput.value.trim() || titleInput.value.trim();
 		if (!url) { alert('No hero image URL set.'); return; }
 		insertAtCursor(bodyInput, `![${alt}](${url})\n\n`, '');
+		toast('Hero image inserted');
 	});
 
 	insertAttachmentsBtn.addEventListener('click', async () => {
@@ -526,9 +610,11 @@
 			} else {
 				imgUrl = URL.createObjectURL(f);
 			}
+			trackedAssets.push({ file: f, name: f.name, alt: f.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ') });
 			lines += `![${f.name}](${imgUrl})\n\n`;
 		}
 		insertAtCursor(bodyInput, lines, '');
+		toast('Attachments inserted');
 	});
 
 	function downloadsZip(files) {
@@ -642,8 +728,16 @@
 		const drafts = loadDrafts();
 		if (drafts.length === 0) { alert('No drafts to download.'); return; }
 		const encoder = new TextEncoder();
-		const files = drafts.map(d => ({ name: `content/news/${d.filename}`, data: encoder.encode(d.content) }));
-		// Optional: include a folder structure for images
+		const files = drafts.flatMap(d => {
+			const html = renderMarkdown((d.content || '').replace(/^---[\s\S]*?---\n?/, ''));
+			const manifest = JSON.stringify({ schemaVersion: '1.0.0', generator: { name: 'sonce-news-editor', version: '0.1.0' }, post: { file: 'post.md', html: 'post.html' } }, null, 2);
+			const baseDir = d.filename.replace(/\.md$/,'');
+			return [
+				{ name: `${baseDir}/post.md`, data: encoder.encode(d.content) },
+				{ name: `${baseDir}/post.html`, data: encoder.encode(html) },
+				{ name: `${baseDir}/manifest.json`, data: encoder.encode(manifest) },
+			];
+		});
 		downloadsZip(files);
 	});
 
@@ -674,6 +768,21 @@
 		bodyInput.value = t.body || '';
 		if (livePreviewCheckbox.checked) showPreview();
 	}
+
+	// Built-in templates (seed once)
+	(function seedTemplates() {
+		const templates = loadTemplates();
+		if (!templates || templates.length === 0) {
+			const nowIso = new Date().toISOString().slice(0,10);
+			const builtIns = [
+				{ name: 'Announcement', payload: { title: 'Important Announcement', date: nowIso, body: '## Summary\n\n- Key point 1\n- Key point 2\n\n## Details\n\nWrite the details here.\n\n## Next Steps / Call to Action\n\n- Contact: …\n- Deadline: …\n' } },
+				{ name: 'Legal Update', payload: { title: 'Legal Update: Case Result', date: nowIso, body: '## Context\n\nBrief background.\n\n## Outcome\n\nWhat was decided.\n\n## Implications\n\nWhy this matters.\n\n## FAQ\n\n- **Q:** …\n  **A:** …\n' } },
+				{ name: 'Event Recap', payload: { title: 'Event Recap: [Event Name]', date: nowIso, body: '## Highlights\n\n- …\n\n## Photos\n\n![Alt](./assets/cover.webp "Caption")\n\n## What Comes Next\n\nCTA or next steps.\n' } }
+			];
+			saveTemplates(builtIns);
+		}
+		refreshTemplateSelect();
+	})();
 
 	saveTemplateBtn.addEventListener('click', () => {
 		const name = templateNameInput.value.trim();
@@ -737,13 +846,14 @@
 			await writeFile(newsDir, filename, new Blob([md], { type: 'text/markdown;charset=utf-8' }));
 			await updateIndexJson(repoDirHandle, filename);
 			repoStatusEl.textContent = `Saved: ${filename}`;
-			alert('Saved to repo and index updated.');
+			toast('Saved to repo', 'success');
+			await saveSnapshot('Auto snapshot on Save to Repo');
 		} catch (err) { console.error(err); alert('Save failed. See console for details.'); }
 	});
 
 	rebuildIndexBtn.addEventListener('click', async () => {
 		if (!repoDirHandle) { alert('Connect a repo folder first.'); return; }
-		try { await rebuildIndex(repoDirHandle); alert('Index rebuilt from Markdown files.'); }
+		try { await rebuildIndex(repoDirHandle); toast('Index rebuilt', 'success'); }
 		catch (err) { console.error(err); alert('Rebuild failed. See console for details.'); }
 	});
 
@@ -771,7 +881,7 @@
 				const { attrs, body } = parseFrontmatter(text);
 				const m = name.match(/^(\d{4}-\d{2}-\d{2})-(.+)\.md$/);
 				const date = attrs.date || (m ? m[1] : '') || '';
-				const slug = (attrs.slug && slugify(attrs.slug)) || (m ? m[2] : slugify(attrs.title || 'post')) || 'post';
+				const slug = (attrs.slug && smartSlug(attrs.slug)) || (m ? m[2] : smartSlug(attrs.title || 'post')) || 'post';
 				const reading = estimateReadingTime(body || '');
 				const summary = (attrs.summary || '').trim() || generateSummaryFromBody(body || '');
 				const tags = Array.isArray(attrs.tags) ? attrs.tags : parseTags(attrs.tags || '');
@@ -797,6 +907,307 @@
 		await writeFile(newsDir, 'index.json', new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' }));
 	}
 
+	// Autosave (localStorage)
+	function serializeForm() {
+		return {
+			title: titleInput.value,
+			date: dateInput.value,
+			author: authorInput.value,
+			slug: slugInput.value,
+			image: imageInput.value,
+			imageAlt: imageAltInput.value,
+			tags: tagsInput.value,
+			summary: summaryInput.value,
+			body: bodyInput.value,
+			notes: notesInput ? notesInput.value : '',
+			updatedAt: new Date().toISOString()
+		};
+	}
+	function deserializeForm(data) {
+		if (!data) return;
+		titleInput.value = data.title || '';
+		dateInput.value = data.date || dateInput.value;
+		authorInput.value = data.author || '';
+		slugInput.value = data.slug || '';
+		imageInput.value = data.image || '';
+		imageAltInput.value = data.imageAlt || '';
+		tagsInput.value = data.tags || '';
+		summaryInput.value = data.summary || '';
+		bodyInput.value = data.body || '';
+		if (notesInput) notesInput.value = data.notes || '';
+		if (livePreviewCheckbox.checked) showPreview();
+	}
+	function saveAutosave() {
+		try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(serializeForm())); } catch {}
+	}
+	function getAutosave() {
+		try { return JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || 'null'); } catch { return null; }
+	}
+	function clearAutosave() { localStorage.removeItem(AUTOSAVE_KEY); }
+
+	let autosaveTimer = null;
+	form.addEventListener('input', () => {
+		clearTimeout(autosaveTimer);
+		autosaveTimer = setTimeout(saveAutosave, 800);
+	});
+
+	(function initAutosaveBanner() {
+		const data = getAutosave();
+		if (data && restoreBanner) {
+			restoreBanner.hidden = false;
+			restoreBtn.onclick = () => { deserializeForm(data); restoreBanner.hidden = true; toast('Draft restored', 'success'); };
+			dismissRestoreBtn.onclick = () => { restoreBanner.hidden = true; clearAutosave(); };
+		}
+	})();
+
+	// Tag suggestions
+	function suggestTags() {
+		const text = `${titleInput.value} ${bodyInput.value}`.toLowerCase();
+		const tokens = text.replace(/[^a-z0-9\s-]/g, ' ').split(/\s+/).filter(Boolean);
+		const stop = new Set(['a','an','the','and','or','but','of','for','in','on','to','from','with','by','at','as','is','are','be','this','that','these','those','it','its','was','were','has','have','had','will','can','do','over']);
+		const freq = {};
+		for (const tok of tokens) { if (tok.length < 3 || stop.has(tok)) continue; freq[tok] = (freq[tok] || 0) + 1; }
+		const top = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0, 5).map(([k]) => k);
+		tagSuggestionsEl.innerHTML = top.map(t => `<span class="chip" data-tag="${t}">${t}</span>`).join('');
+	}
+	titleInput.addEventListener('input', suggestTags);
+	bodyInput.addEventListener('input', suggestTags);
+	tagSuggestionsEl.addEventListener('click', (e) => {
+		const chip = e.target.closest('.chip');
+		if (!chip) return;
+		const tag = chip.dataset.tag;
+		const tags = parseTags(tagsInput.value);
+		if (!tags.includes(tag)) tags.push(tag);
+		tagsInput.value = tags.join(', ');
+	});
+
+	// Validation & lint panel
+	function validateContentDetailed() {
+		const warnings = [];
+		const md = bodyInput.value || '';
+		// Images alt
+		const imgRe = /!\[(.*?)\]\((.*?)\)/g; let m;
+		while ((m = imgRe.exec(md))) { if (!m[1] || !m[1].trim()) warnings.push({ level: 'warn', msg: `Image missing alt: ${m[2]}` }); }
+		// Check hero image alt
+		if (imageInput.value && !imageAltInput.value.trim()) warnings.push({ level: 'warn', msg: 'Hero image alt text is missing.' });
+		// Headings start at H2
+		const headingLines = md.split(/\n/).filter(l => /^#{1,6}\s+/.test(l));
+		if (headingLines.some(l => l.startsWith('# '))) warnings.push({ level: 'warn', msg: 'Use H2 (##) as first heading. H1 is reserved for title.' });
+		// Links http
+		if (/\]\(http:\/\//i.test(md)) warnings.push({ level: 'warn', msg: 'Use HTTPS links when possible.' });
+		// Description length
+		const desc = (summaryInput.value || '').trim() || generateSummaryFromBody(md);
+		if (desc.length > 160) warnings.push({ level: 'warn', msg: 'Description exceeds 160 characters.' });
+		if (!warnings.length) warnings.push({ level: 'ok', msg: 'No issues found.' });
+		return warnings;
+	}
+	function renderLintPanel() {
+		const results = validateContentDetailed();
+		lintPanel.innerHTML = results.map(r => `<div class="${r.level}">• ${r.msg}</div>`).join('');
+	}
+	bodyInput.addEventListener('input', renderLintPanel);
+	summaryInput.addEventListener('input', renderLintPanel);
+
+	// Drag & drop and paste
+	function showDropOverlay(show) { if (!dropOverlay) return; dropOverlay.hidden = !show; }
+	['dragenter','dragover'].forEach(evt => {
+		document.addEventListener(evt, (e) => { e.preventDefault(); showDropOverlay(true); dropZone.classList.add('dragover'); });
+	});
+	['dragleave','drop'].forEach(evt => {
+		document.addEventListener(evt, (e) => { e.preventDefault(); if (evt === 'drop') return; showDropOverlay(false); dropZone.classList.remove('dragover'); });
+	});
+	dropZone.addEventListener('drop', async (e) => {
+		showDropOverlay(false); dropZone.classList.remove('dragover');
+		const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+		if (!files.length) { toast('No images dropped', 'error'); return; }
+		for (const f of files) {
+			const defaultAlt = f.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+			const alt = await quickPrompt('Alt text for image', defaultAlt);
+			await insertImageAsset(f, alt || defaultAlt);
+		}
+		toast('Images inserted', 'success');
+	});
+	window.addEventListener('paste', async (e) => {
+		const items = e.clipboardData && e.clipboardData.items ? [...e.clipboardData.items] : [];
+		const images = items.filter(i => i.type && i.type.startsWith('image/')).map(i => i.getAsFile()).filter(Boolean);
+		if (!images.length) return;
+		for (const f of images) {
+			const defaultAlt = 'pasted image';
+			const alt = await quickPrompt('Alt text for pasted image', defaultAlt);
+			await insertImageAsset(f, alt || defaultAlt);
+		}
+		toast('Pasted images inserted', 'success');
+	});
+
+	async function insertImageAsset(file, alt) {
+		const date = dateInput.value;
+		const yyyy = date.slice(0, 4);
+		const mm = date.slice(5, 7);
+		const slug = getEffectiveSlug();
+		let url = '';
+		if (repoDirHandle) {
+			const baseName = `${slug || 'post'}-drop-${Math.random().toString(36).slice(2,8)}`;
+			url = await copyAttachmentToRepo(file, yyyy, mm, date, baseName);
+		} else {
+			url = URL.createObjectURL(file);
+		}
+		trackedAssets.push({ file, name: file.name, alt });
+		insertAtCursor(bodyInput, `![${alt}](${url})\n\n`, '');
+	}
+
+	// Export bundle
+	async function computeSha256(uint8) {
+		const hash = await crypto.subtle.digest('SHA-256', uint8);
+		return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+	}
+
+	async function exportBundle() {
+		const md = buildMarkdown();
+		if (!md) return;
+		const slug = getEffectiveSlug() || 'post';
+		const bodyOnly = md.replace(/^---[\s\S]*?---\n?/, '');
+		const html = renderMarkdown(bodyOnly);
+		const encoder = new TextEncoder();
+		const files = [];
+		const dir = `${slug}`;
+		const mdBytes = encoder.encode(md);
+		const htmlBytes = encoder.encode(html);
+		const checksum = {
+			algorithm: 'sha256',
+			postMd: await computeSha256(mdBytes),
+			postHtml: await computeSha256(htmlBytes),
+			assets: {}
+		};
+		files.push({ name: `${dir}/post.md`, data: mdBytes });
+		files.push({ name: `${dir}/post.html`, data: htmlBytes });
+		for (const asset of trackedAssets) {
+			const arrayBuf = await asset.file.arrayBuffer();
+			const u8 = new Uint8Array(arrayBuf);
+			files.push({ name: `${dir}/assets/${asset.name}`, data: u8 });
+			checksum.assets[asset.name] = await computeSha256(u8);
+		}
+		const manifest = {
+			schemaVersion: '1.0.0',
+			generator: { name: 'sonce-news-editor', version: '0.1.0' },
+			post: {
+				id: `${dateInput.value}-${slug}`,
+				slug,
+				file: 'post.md',
+				html: 'post.html',
+				assetsDir: 'assets',
+				exportedAt: new Date().toISOString(),
+				checksum
+			}
+		};
+		files.push({ name: `${dir}/manifest.json`, data: encoder.encode(JSON.stringify(manifest, null, 2)) });
+		downloadsZip(files);
+		toast('Exported bundle', 'success');
+	}
+	exportBundleBtn.addEventListener('click', exportBundle);
+
+	// Version history (IndexedDB)
+	function openHistoryDB() {
+		return new Promise((resolve, reject) => {
+			const req = indexedDB.open('sonce-news-history', 1);
+			req.onupgradeneeded = () => {
+				const db = req.result;
+				if (!db.objectStoreNames.contains('snapshots')) db.createObjectStore('snapshots', { keyPath: 'id', autoIncrement: true });
+			};
+			req.onsuccess = () => resolve(req.result);
+			req.onerror = () => reject(req.error);
+		});
+	}
+	async function saveSnapshot(note) {
+		const db = await openHistoryDB();
+		const tx = db.transaction('snapshots', 'readwrite');
+		const store = tx.objectStore('snapshots');
+		const key = `${dateInput.value}-${getEffectiveSlug()}`;
+		const data = serializeForm();
+		await new Promise((resolve, reject) => {
+			const req = store.add({ postKey: key, note: note || '', createdAt: new Date().toISOString(), data });
+			req.onsuccess = () => resolve();
+			req.onerror = () => reject(req.error);
+		});
+	}
+	async function listSnapshots() {
+		const db = await openHistoryDB();
+		const tx = db.transaction('snapshots', 'readonly');
+		const store = tx.objectStore('snapshots');
+		const key = `${dateInput.value}-${getEffectiveSlug()}`;
+		return new Promise((resolve) => {
+			const results = [];
+			store.openCursor().onsuccess = (e) => {
+				const cursor = e.target.result;
+				if (cursor) {
+					if (cursor.value.postKey === key) results.push(cursor.value);
+					cursor.continue();
+				} else { resolve(results.sort((a,b) => (a.createdAt < b.createdAt ? 1 : -1))); }
+			};
+		});
+	}
+
+	saveVersionBtn.addEventListener('click', async () => {
+		await saveSnapshot('Manual snapshot');
+		toast('Version saved', 'success');
+	});
+
+	historyBtn.addEventListener('click', async () => {
+		const list = await listSnapshots();
+		const wrap = document.createElement('div');
+		if (!list.length) { wrap.textContent = 'No versions yet.'; openModal('Version History', wrap); return; }
+		wrap.innerHTML = list.map((s, i) => `
+			<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1px solid #334155; padding:8px 0;">
+				<div>
+					<div><strong>${new Date(s.createdAt).toLocaleString()}</strong></div>
+					<div class="hint">${s.note || ''}</div>
+				</div>
+				<div style="display:flex; gap:8px;">
+					<button data-idx="${i}" data-act="preview">Preview</button>
+					<button data-idx="${i}" data-act="restore" class="primary">Restore</button>
+				</div>
+			</div>
+		`).join('');
+		wrap.addEventListener('click', (e) => {
+			const btn = e.target.closest('button'); if (!btn) return;
+			const idx = Number(btn.dataset.idx); const act = btn.dataset.act; const snap = list[idx];
+			if (act === 'restore') { deserializeForm(snap.data); toast('Version restored', 'success'); document.getElementById('modal-overlay').hidden = true; }
+			if (act === 'preview') { const pre = document.createElement('pre'); pre.textContent = JSON.stringify(snap.data, null, 2); openModal('Snapshot Preview', pre); }
+		});
+		openModal('Version History', wrap);
+	});
+
+	// Cheat sheet
+	cheatSheetBtn.addEventListener('click', () => {
+		const el = document.createElement('div');
+		el.innerHTML = `
+			<h4>Markdown Basics</h4>
+			<ul>
+				<li><code>## Heading</code></li>
+				<li><code>**bold**</code>, <code>*italic*</code>, <code>\`code\`</code></li>
+				<li><code>- list</code> or <code>1. list</code></li>
+				<li><code>[text](https://example.com)</code></li>
+				<li><code>![alt](./assets/image.webp "caption")</code></li>
+			</ul>
+		`;
+		openModal('Cheat Sheet', el);
+	});
+
+	// Keyboard shortcuts
+	document.addEventListener('keydown', (e) => {
+		const isMac = navigator.platform.toUpperCase().indexOf('MAC')>=0;
+		const mod = isMac ? e.metaKey : e.ctrlKey;
+		if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); downloadBtn.click(); }
+		if (mod && e.key.toLowerCase() === 'p') { e.preventDefault(); livePreviewCheckbox.checked = !livePreviewCheckbox.checked; if (livePreviewCheckbox.checked) showPreview(); }
+		if (mod && e.key.toLowerCase() === 'b') { e.preventDefault(); insertAtCursor(bodyInput, '**', '**', 'bold'); }
+		if (mod && e.key.toLowerCase() === 'i') { e.preventDefault(); insertAtCursor(bodyInput, '*', '*', 'italic'); }
+		if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); insertAtCursor(bodyInput, '[', '](https://)', 'text'); }
+		if (mod && e.shiftKey && e.key.toLowerCase() === 'i') { e.preventDefault(); insertAttachmentsBtn.click(); }
+		if (mod && e.key.toLowerCase() === 'e') { e.preventDefault(); exportBundleBtn.click(); }
+		if (mod && e.altKey && e.key === '2') { e.preventDefault(); insertAtCursor(bodyInput, '## ', ''); }
+		if (mod && e.altKey && e.key === '3') { e.preventDefault(); insertAtCursor(bodyInput, '### ', ''); }
+		if (mod && e.altKey && e.key === '4') { e.preventDefault(); insertAtCursor(bodyInput, '#### ', ''); }
+	});
+
 	// Events
 	previewBtn.addEventListener('click', showPreview);
 	downloadBtn.addEventListener('click', downloadMarkdown);
@@ -804,7 +1215,7 @@
 	downloadJsonBtn.addEventListener('click', downloadJsonEntry);
 
 	slugInput.addEventListener('input', () => { userEditedSlug = true; });
-	titleInput.addEventListener('input', () => { if (!userEditedSlug) { slugInput.value = slugify(titleInput.value.trim()); } if (livePreviewCheckbox.checked) showPreview(); });
+	titleInput.addEventListener('input', () => { if (!userEditedSlug) { slugInput.value = smartSlug(titleInput.value.trim()); } if (livePreviewCheckbox.checked) showPreview(); });
 	imageInput.addEventListener('input', () => { if (livePreviewCheckbox.checked) showPreview(); });
 	bodyInput.addEventListener('input', () => { if (livePreviewCheckbox.checked) showPreview(); });
 })();
