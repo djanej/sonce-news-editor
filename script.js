@@ -415,7 +415,7 @@
 	}
 
 	function slugify(text) {
-		return text
+		const result = text
 			.toString()
 			.normalize('NFKD')
 			.replace(/[\u0300-\u036f]/g, '')
@@ -423,6 +423,9 @@
 			.replace(/[^a-z0-9]+/g, '-')
 			.replace(/(^-|-$)+/g, '')
 			.substring(0, 80);
+		
+		// Handle edge case where result might be empty
+		return result || 'untitled';
 	}
 
 	function smartSlug(text) {
@@ -1153,13 +1156,25 @@
 
 	// Tag suggestions
 	function suggestTags() {
-		const text = `${titleInput.value} ${bodyInput.value}`.toLowerCase();
-		const tokens = text.replace(/[^a-z0-9\s-]/g, ' ').split(/\s+/).filter(Boolean);
-		const stop = new Set(['a','an','the','and','or','but','of','for','in','on','to','from','with','by','at','as','is','are','be','this','that','these','those','it','its','was','were','has','have','had','will','can','do','over']);
+		if (!tagSuggestionsEl) return;
+		const text = (titleInput.value + ' ' + bodyInput.value).toLowerCase();
+		const tokens = text.split(/\W+/).filter(t => t.length >= 3);
 		const freq = {};
+		const stop = new Set(['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see', 'two', 'who', 'boy', 'did', 'doesn', 'let', 'put', 'say', 'she', 'too', 'use']);
 		for (const tok of tokens) { if (tok.length < 3 || stop.has(tok)) continue; freq[tok] = (freq[tok] || 0) + 1; }
 		const top = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0, 5).map(([k]) => k);
-		tagSuggestionsEl.innerHTML = top.map(t => `<span class="chip" data-tag="${t}">${t}</span>`).join('');
+		
+		// Clear existing suggestions safely
+		tagSuggestionsEl.innerHTML = '';
+		
+		// Create DOM elements safely to prevent XSS
+		top.forEach(tag => {
+			const span = document.createElement('span');
+			span.className = 'chip';
+			span.setAttribute('data-tag', tag);
+			span.textContent = tag; // Use textContent to prevent XSS
+			tagSuggestionsEl.appendChild(span);
+		});
 	}
 	// Tag suggestions - moved to setupEventHandlers
 
@@ -1185,7 +1200,17 @@
 	}
 	function renderLintPanel() {
 		const results = validateContentDetailed();
-		lintPanel.innerHTML = results.map(r => `<div class="${r.level}">• ${r.msg}</div>`).join('');
+		
+		// Clear existing content safely
+		lintPanel.innerHTML = '';
+		
+		// Create DOM elements safely to prevent XSS
+		results.forEach(r => {
+			const div = document.createElement('div');
+			div.className = r.level;
+			div.textContent = `• ${r.msg}`; // Use textContent to prevent XSS
+			lintPanel.appendChild(div);
+		});
 	}
 	// Validation & lint panel - moved to setupEventHandlers
 
@@ -1524,8 +1549,19 @@
 					toast('Connect a repo folder first', 'error'); 
 					return; 
 				}
+				
+				// Prevent race conditions
+				if (saveRepoBtn.disabled) return;
+				saveRepoBtn.disabled = true;
+				const originalText = saveRepoBtn.textContent;
+				saveRepoBtn.textContent = 'Saving...';
+				
 				const md = buildMarkdown();
-				if (!md) return;
+				if (!md) {
+					saveRepoBtn.disabled = false;
+					saveRepoBtn.textContent = originalText;
+					return;
+				}
 				try {
 					const date = dateInput.value;
 					const yyyy = date.slice(0, 4);
@@ -1562,6 +1598,10 @@
 				} catch (err) { 
 					console.error(err); 
 					toast('Save failed. See console for details', 'error'); 
+				} finally {
+					// Always re-enable button
+					saveRepoBtn.disabled = false;
+					saveRepoBtn.textContent = originalText;
 				}
 			});
 
@@ -1570,6 +1610,13 @@
 					toast('Connect a repo folder first', 'error'); 
 					return; 
 				}
+				
+				// Prevent race conditions
+				if (rebuildIndexBtn.disabled) return;
+				rebuildIndexBtn.disabled = true;
+				const originalText = rebuildIndexBtn.textContent;
+				rebuildIndexBtn.textContent = 'Rebuilding...';
+				
 				try { 
 					await rebuildIndex(repoDirHandle); 
 					toast('Index rebuilt', 'success'); 
@@ -1577,6 +1624,10 @@
 				catch (err) { 
 					console.error(err); 
 					toast('Rebuild failed. See console for details', 'error'); 
+				} finally {
+					// Always re-enable button
+					rebuildIndexBtn.disabled = false;
+					rebuildIndexBtn.textContent = originalText;
 				}
 			});
 
