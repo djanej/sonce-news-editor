@@ -161,16 +161,29 @@
 			const dd = String(today.getDate()).padStart(2, '0');
 			dateInput.value = `${yyyy}-${mm}-${dd}`;
 
-			// Load autosaved content if available
+						// Load autosaved content if available
 			loadAutosave();
-
+			
 			// Initialize autosave banner
 			const data = getAutosave();
-			if (data && restoreBanner) {
+			if (restoreBanner) {
+				restoreBanner.hidden = true;
+			}
+			const __hasMeaningful = (() => {
+				try {
+					if (!data || typeof data !== 'object') return false;
+					const fields = ['title','author','slug','image','imageAlt','tags','summary','body','notes'];
+					return fields.some((k) => typeof data[k] === 'string' && data[k].trim().length > 0);
+				} catch (e) {
+					return false;
+				}
+			})();
+			if (__hasMeaningful && restoreBanner) {
 				restoreBanner.hidden = false;
 				restoreBtn.onclick = () => { 
 					deserializeForm(data); 
 					restoreBanner.hidden = true; 
+					clearAutosave(); 
 					toast('Draft restored', 'success'); 
 				};
 				dismissRestoreBtn.onclick = () => { 
@@ -178,7 +191,7 @@
 					clearAutosave(); 
 				};
 			}
-
+			
 			// Initialize other components
 			refreshTemplateSelect();
 			updateDraftsCount();
@@ -1067,17 +1080,29 @@
 			const stored = localStorage.getItem(AUTOSAVE_KEY);
 			if (stored) {
 				const data = JSON.parse(stored);
-				if (data && Object.keys(data).length > 0) {
+				const __hasMeaningful = (() => {
+					try {
+						if (!data || typeof data !== 'object') return false;
+						const fields = ['title','author','slug','image','imageAlt','tags','summary','body','notes'];
+						return fields.some((k) => typeof data[k] === 'string' && data[k].trim().length > 0);
+					} catch (e) {
+						return false;
+					}
+				})();
+				if (__hasMeaningful) {
 					restoreBanner.hidden = false;
 					restoreBtn.onclick = () => { 
 						deserializeForm(data); 
 						restoreBanner.hidden = true; 
+						clearAutosave();
 						toast('Draft restored', 'success'); 
 					};
 					dismissRestoreBtn.onclick = () => { 
 						restoreBanner.hidden = true; 
 						clearAutosave(); 
 					};
+				} else if (restoreBanner) {
+					restoreBanner.hidden = true;
 				}
 			}
 		} catch (error) {
