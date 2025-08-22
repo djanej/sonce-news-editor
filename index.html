@@ -5,11 +5,17 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>Sonce News Editor</title>
 	<link rel="stylesheet" href="style.css" />
+	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀️</text></svg>" />
 </head>
 <body>
 	<header class="app-header">
-		<h1>Sonce News Editor</h1>
-		<p class="subtitle">Generate Markdown news posts with YAML frontmatter</p>
+		<div class="header-content">
+			<div class="title-section">
+				<span class="sun-icon">☀️</span>
+				<h1>Sonce News Editor</h1>
+			</div>
+			<p class="subtitle">Generate Markdown news posts with YAML frontmatter</p>
+		</div>
 	</header>
 
 	<div id="restore-banner" class="restore-banner" hidden aria-live="polite" role="status">
@@ -91,23 +97,26 @@
 				</div>
 
 				<div id="drop-zone" class="drop-zone" aria-label="Drop images here or paste (Ctrl+V)">
-					<p>Drag & drop images here or paste (Ctrl+V)</p>
+					<div class="drop-zone-content">
+						<span class="drop-icon">📁</span>
+						<p>Drag & drop images here or paste (Ctrl+V)</p>
+					</div>
 				</div>
 
 				<div class="toolbar">
 					<div class="toolbar-left">
-						<button type="button" data-md="h1">H1</button>
-						<button type="button" data-md="h2">H2</button>
-						<button type="button" data-md="h3">H3</button>
-						<button type="button" data-md="bold"><strong>B</strong></button>
-						<button type="button" data-md="italic"><em>I</em></button>
-						<button type="button" data-md="ul">• List</button>
-						<button type="button" data-md="ol">1. List</button>
-						<button type="button" data-md="quote">“ Quote”</button>
-						<button type="button" data-md="code">Code</button>
-						<button type="button" data-md="link">Link</button>
-						<button type="button" id="insert-hero-btn">Insert Hero</button>
-						<button type="button" id="insert-attachments-btn">Insert Attachments</button>
+						<button type="button" data-md="h1" title="Heading 1">H1</button>
+						<button type="button" data-md="h2" title="Heading 2">H2</button>
+						<button type="button" data-md="h3" title="Heading 3">H3</button>
+						<button type="button" data-md="bold" title="Bold"><strong>B</strong></button>
+						<button type="button" data-md="italic" title="Italic"><em>I</em></button>
+						<button type="button" data-md="ul" title="Unordered List">• List</button>
+						<button type="button" data-md="ol" title="Ordered List">1. List</button>
+						<button type="button" data-md="quote" title="Quote">" Quote"</button>
+						<button type="button" data-md="code" title="Code Block">Code</button>
+						<button type="button" data-md="link" title="Link">Link</button>
+						<button type="button" id="insert-hero-btn" title="Insert Hero Image">Insert Hero</button>
+						<button type="button" id="insert-attachments-btn" title="Insert Attachments">Insert Attachments</button>
 					</div>
 					<div class="toolbar-right">
 						<label class="hint"><input type="checkbox" id="live-preview" /> Live Preview</label>
@@ -118,7 +127,8 @@
 
 				<div class="field">
 					<label for="body">Body Content (Markdown)</label>
-					<textarea id="body" name="body" rows="14" placeholder="Write your news content here using Markdown..."></textarea>
+					<textarea id="body" name="body" rows="14" placeholder="Write your news content here using Markdown..." aria-describedby="body-hint"></textarea>
+					<p id="body-hint" class="hint">Use the toolbar above for quick formatting or type Markdown directly.</p>
 				</div>
 
 				<div class="templates">
@@ -178,7 +188,10 @@
 				<p class="hint">Renders Markdown below. Frontmatter not shown.</p>
 			</div>
 			<div id="preview-content" class="preview-content">
-				<p class="placeholder">Click Preview to see a live rendering here.</p>
+				<div class="placeholder">
+					<span class="placeholder-icon">📝</span>
+					<p>Click Preview to see a live rendering here.</p>
+				</div>
 			</div>
 		</aside>
 	</main>
@@ -191,7 +204,7 @@
 		<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
 			<div class="modal-header">
 				<h3 id="modal-title">Modal</h3>
-				<button type="button" id="modal-close">×</button>
+				<button type="button" id="modal-close" aria-label="Close modal">×</button>
 			</div>
 			<div id="modal-body" class="modal-body"></div>
 		</div>

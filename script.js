@@ -70,69 +70,176 @@
 	// Assets tracked for export bundle (in-memory)
 	const trackedAssets = []; // { file: File|Blob, name: string, alt: string }
 
+	// Error handling wrapper
+	function safeExecute(fn, errorMessage = 'An error occurred') {
+		try {
+			return fn();
+		} catch (error) {
+			console.error(errorMessage, error);
+			toast(errorMessage, 'error');
+			return null;
+		}
+	}
+
+	// Initialize the application
+	function initializeApp() {
+		try {
+			// Set default date to today
+			const today = new Date();
+			const yyyy = today.getFullYear();
+			const mm = String(today.getMonth() + 1).padStart(2, '0');
+			const dd = String(today.getDate()).padStart(2, '0');
+			dateInput.value = `${yyyy}-${mm}-${dd}`;
+
+			// Load autosaved content if available
+			loadAutosave();
+
+			// Initialize other components
+			refreshTemplateSelect();
+			updateDraftsCount();
+
+			// Set up autosave
+			setupAutosave();
+		} catch (error) {
+			console.error('Failed to initialize app:', error);
+			toast('Failed to initialize application', 'error');
+		}
+	}
+
 	function toast(message, type = 'info', timeoutMs = 2500) {
 		if (!toastContainer) return;
-		const t = document.createElement('div');
-		t.className = `toast ${type}`;
-		t.textContent = message;
-		toastContainer.appendChild(t);
-		setTimeout(() => { t.remove(); }, timeoutMs);
+		
+		try {
+			const t = document.createElement('div');
+			t.className = `toast ${type}`;
+			t.textContent = message;
+			toastContainer.appendChild(t);
+			
+			// Auto-remove after timeout
+			setTimeout(() => { 
+				if (t.parentNode) {
+					t.remove(); 
+				}
+			}, timeoutMs);
+		} catch (error) {
+			console.error('Failed to show toast:', error);
+		}
 	}
 
 	function openModal(title, contentEl) {
-		const overlay = document.getElementById('modal-overlay');
-		if (!overlay) return;
-		document.getElementById('modal-title').textContent = title || '';
-		const body = document.getElementById('modal-body');
-		body.innerHTML = '';
-		body.appendChild(contentEl);
-		overlay.hidden = false;
-		document.getElementById('modal-close').onclick = () => { overlay.hidden = true; };
-		overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.hidden = true; }, { once: true });
+		try {
+			const overlay = document.getElementById('modal-overlay');
+			if (!overlay) return;
+			
+			document.getElementById('modal-title').textContent = title || '';
+			const body = document.getElementById('modal-body');
+			body.innerHTML = '';
+			body.appendChild(contentEl);
+			overlay.hidden = false;
+			
+			document.getElementById('modal-close').onclick = () => { 
+				overlay.hidden = true; 
+			};
+			
+			overlay.addEventListener('click', (e) => { 
+				if (e.target === overlay) overlay.hidden = true; 
+			}, { once: true });
+		} catch (error) {
+			console.error('Failed to open modal:', error);
+			toast('Failed to open modal', 'error');
+		}
 	}
 
 	function quickPrompt(label, defaultValue = '') {
 		return new Promise((resolve) => {
-			const wrap = document.createElement('div');
-			wrap.innerHTML = `
-				<label style="display:block; font-weight:600; margin-bottom:6px;">${label}</label>
-				<input id="__prompt_input" type="text" value="${defaultValue.replace(/"/g, '&quot;')}" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #334155; background:#0b1220; color:#e5e7eb;" />
-				<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
-					<button id="__prompt_cancel" type="button">Cancel</button>
-					<button id="__prompt_ok" type="button" class="primary">OK</button>
-				</div>
-			`;
-			openModal('Input', wrap);
-			const overlay = document.getElementById('modal-overlay');
-			const input = wrap.querySelector('#__prompt_input');
-			setTimeout(() => input.focus(), 0);
-			wrap.querySelector('#__prompt_cancel').onclick = () => { overlay.hidden = true; resolve(null); };
-			wrap.querySelector('#__prompt_ok').onclick = () => { const v = input.value.trim(); overlay.hidden = true; resolve(v || defaultValue); };
+			try {
+				const wrap = document.createElement('div');
+				wrap.innerHTML = `
+					<label style="display:block; font-weight:600; margin-bottom:6px;">${label}</label>
+					<input id="__prompt_input" type="text" value="${defaultValue.replace(/"/g, '&quot;')}" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #334155; background:#0b1220; color:#e5e7eb;" />
+					<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
+						<button id="__prompt_cancel" style="padding:8px 16px; border-radius:6px; border:1px solid #334155; background:#0b1220; color:#e5e7eb;">Cancel</button>
+						<button id="__prompt_ok" style="padding:8px 16px; border-radius:6px; border:1px solid #22c55e; background:#22c55e; color:white;">OK</button>
+					</div>
+				`;
+				
+				const overlay = document.getElementById('modal-overlay');
+				const input = wrap.querySelector('#__prompt_input');
+				
+				wrap.querySelector('#__prompt_cancel').onclick = () => { overlay.hidden = true; resolve(defaultValue); };
+				wrap.querySelector('#__prompt_ok').onclick = () => { 
+					const v = input.value.trim(); 
+					overlay.hidden = true; 
+					resolve(v || defaultValue); 
+				};
+				
+				openModal('Input Required', wrap);
+				setTimeout(() => input.focus(), 100);
+			} catch (error) {
+				console.error('Failed to show prompt:', error);
+				resolve(defaultValue);
+			}
 		});
 	}
 
 	function loadDrafts() {
-		try { return JSON.parse(localStorage.getItem(DRAFTS_KEY) || '[]'); } catch { return []; }
+		try {
+			const stored = localStorage.getItem(DRAFTS_KEY);
+			return stored ? JSON.parse(stored) : [];
+		} catch (error) {
+			console.error('Failed to load drafts:', error);
+			return [];
+		}
 	}
 	function saveDrafts(drafts) {
-		localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
-		updateDraftsCount();
+		try {
+			localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
+		} catch (error) {
+			console.error('Failed to save drafts:', error);
+			toast('Failed to save drafts', 'error');
+		}
 	}
 	function updateDraftsCount() {
-		const drafts = loadDrafts();
-		draftsCountEl.textContent = `${drafts.length} drafts`;
+		try {
+			const drafts = loadDrafts();
+			if (draftsCountEl) {
+				draftsCountEl.textContent = `${drafts.length} draft${drafts.length !== 1 ? 's' : ''}`;
+			}
+		} catch (error) {
+			console.error('Failed to update drafts count:', error);
+		}
 	}
 
 	function loadTemplates() {
-		try { return JSON.parse(localStorage.getItem(TEMPLATES_KEY) || '[]'); } catch { return []; }
+		try {
+			const stored = localStorage.getItem(TEMPLATES_KEY);
+			return stored ? JSON.parse(stored) : [];
+		} catch (error) {
+			console.error('Failed to load templates:', error);
+			return [];
+		}
 	}
 	function saveTemplates(templates) {
-		localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
-		refreshTemplateSelect();
+		try {
+			localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+		} catch (error) {
+			console.error('Failed to save templates:', error);
+			toast('Failed to save templates', 'error');
+		}
 	}
 	function refreshTemplateSelect() {
-		const templates = loadTemplates();
-		templateSelect.innerHTML = '<option value="">Select template…</option>' + templates.map((t, i) => `<option value="${i}">${t.name}</option>`).join('');
+		try {
+			const templates = loadTemplates();
+			templateSelect.innerHTML = '<option value="">Select template…</option>';
+			templates.forEach((t, i) => {
+				const opt = document.createElement('option');
+				opt.value = i;
+				opt.textContent = t.name;
+				templateSelect.appendChild(opt);
+			});
+		} catch (error) {
+			console.error('Failed to refresh template select:', error);
+		}
 	}
 
 	// Set default date to today
@@ -241,27 +348,45 @@
 		try { new URL(value, window.location.origin); return true; } catch { return false; }
 	}
 
-	function validateForm({ checkBody = true } = {}) {
+	// Form validation
+	function validateForm() {
+		const errors = [];
+		
 		if (!titleInput.value.trim()) {
-			alert('Title is required.');
-			return false;
+			errors.push('Title is required');
 		}
+		
 		if (!dateInput.value) {
-			alert('Date is required.');
-			return false;
+			errors.push('Date is required');
 		}
-		if (checkBody && !bodyInput.value.trim()) {
-			alert('Body is required.');
-			return false;
+		
+		if (!bodyInput.value.trim()) {
+			errors.push('Body content is required');
 		}
-		if (imageInput.value && !isValidUrl(imageInput.value)) {
-			alert('Hero Image URL is not valid.');
-			return false;
+		
+		return errors;
+	}
+
+	function showFormErrors(errors) {
+		if (errors.length === 0) return;
+		
+		const errorMessage = errors.join(', ');
+		toast(errorMessage, 'error');
+		
+		// Highlight first error field
+		if (!titleInput.value.trim()) {
+			titleInput.focus();
+			titleInput.style.borderColor = '#ef4444';
+			setTimeout(() => titleInput.style.borderColor = '', 3000);
+		} else if (!dateInput.value) {
+			dateInput.focus();
+			dateInput.style.borderColor = '#ef4444';
+			setTimeout(() => dateInput.style.borderColor = '', 3000);
+		} else if (!bodyInput.value.trim()) {
+			bodyInput.focus();
+			bodyInput.style.borderColor = '#ef4444';
+			setTimeout(() => bodyInput.style.borderColor = '', 3000);
 		}
-		if (!tagsInput.value.trim()) {
-			if (!confirm('No tags added. Continue?')) return false;
-		}
-		return true;
 	}
 
 	function buildMarkdown() {
@@ -322,25 +447,36 @@
 		return candidate;
 	}
 
+	// Enhanced download function with validation
 	function downloadMarkdown() {
-		const md = buildMarkdown();
-		if (!md) return;
-		const slug = getEffectiveSlug();
-		slugInput.value = slug;
-		const base = `${dateInput.value}-${slug || 'post'}.md`;
-		const drafts = loadDrafts();
-		const existing = drafts.map(d => d.filename);
-		const filename = getVersionedFilename(base, existing);
-		const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = filename;
-		document.body.appendChild(a);
-		a.click();
-		document.body.removeChild(a);
-		URL.revokeObjectURL(url);
-		toast('Markdown downloaded', 'success');
+		const errors = validateForm();
+		if (errors.length > 0) {
+			showFormErrors(errors);
+			return;
+		}
+		
+		try {
+			const md = buildMarkdown();
+			if (!md) {
+				toast('Failed to generate markdown', 'error');
+				return;
+			}
+			
+			const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `${dateInput.value}-${getEffectiveSlug() || 'post'}.md`;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+			
+			toast('Markdown downloaded successfully', 'success');
+		} catch (error) {
+			console.error('Download failed:', error);
+			toast('Download failed', 'error');
+		}
 	}
 
 	function downloadJsonEntry() {
@@ -404,11 +540,40 @@
 		return html;
 	}
 
+	// Enhanced preview function with validation
 	function showPreview() {
-		const md = buildMarkdown();
-		if (!md) return;
-		const bodyOnly = md.replace(/^---[\s\S]*?---\n?/, '');
-		previewContent.innerHTML = renderMarkdown(bodyOnly);
+		const errors = validateForm();
+		if (errors.length > 0) {
+			showFormErrors(errors);
+			return;
+		}
+		
+		try {
+			const md = buildMarkdown();
+			if (!md) {
+				previewContent.innerHTML = '<div class="placeholder"><span class="placeholder-icon">⚠️</span><p>Failed to generate preview</p></div>';
+				return;
+			}
+			
+			// Simple markdown to HTML conversion for preview
+			let html = md.replace(/^---[\s\S]*?---/, ''); // Remove frontmatter
+			html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+			html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+			html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+			html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+			html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+			html = html.replace(/`(.*?)`/g, '<code>$1</code>');
+			html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
+			html = html.replace(/^(\d+)\. (.*$)/gim, '<li>$2</li>');
+			html = html.replace(/\n\n/g, '</p><p>');
+			html = html.replace(/^(.+)$/gm, '<p>$1</p>');
+			html = html.replace(/<p><\/p>/g, '');
+			
+			previewContent.innerHTML = html;
+		} catch (error) {
+			console.error('Preview failed:', error);
+			previewContent.innerHTML = '<div class="placeholder"><span class="placeholder-icon">⚠️</span><p>Failed to generate preview</p></div>';
+		}
 	}
 
 	// Live preview
@@ -937,13 +1102,69 @@
 		if (notesInput) notesInput.value = data.notes || '';
 		if (livePreviewCheckbox.checked) showPreview();
 	}
+	function loadAutosave() {
+		try {
+			const stored = localStorage.getItem(AUTOSAVE_KEY);
+			if (stored) {
+				const data = JSON.parse(stored);
+				if (data && Object.keys(data).length > 0) {
+					restoreBanner.hidden = false;
+					restoreBtn.onclick = () => { 
+						deserializeForm(data); 
+						restoreBanner.hidden = true; 
+						toast('Draft restored', 'success'); 
+					};
+					dismissRestoreBtn.onclick = () => { 
+						restoreBanner.hidden = true; 
+						clearAutosave(); 
+					};
+				}
+			}
+		} catch (error) {
+			console.error('Failed to load autosave:', error);
+			clearAutosave();
+		}
+	}
+
 	function saveAutosave() {
-		try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(serializeForm())); } catch {}
+		try {
+			const data = serializeForm();
+			if (data && Object.keys(data).length > 0) {
+				localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
+			}
+		} catch (error) {
+			console.error('Failed to save autosave:', error);
+		}
 	}
-	function getAutosave() {
-		try { return JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || 'null'); } catch { return null; }
+
+	function clearAutosave() {
+		try {
+			localStorage.removeItem(AUTOSAVE_KEY);
+		} catch (error) {
+			console.error('Failed to clear autosave:', error);
+		}
 	}
-	function clearAutosave() { localStorage.removeItem(AUTOSAVE_KEY); }
+
+	// Debounced autosave function
+	let autosaveTimeout;
+	function debouncedAutosave() {
+		clearTimeout(autosaveTimeout);
+		autosaveTimeout = setTimeout(() => {
+			saveAutosave();
+		}, 1000); // Save after 1 second of inactivity
+	}
+
+	function setupAutosave() {
+		try {
+			// Set up autosave for form inputs
+			const formInputs = form.querySelectorAll('input, textarea');
+			formInputs.forEach(input => {
+				input.addEventListener('input', debouncedAutosave);
+			});
+		} catch (error) {
+			console.error('Failed to setup autosave:', error);
+		}
+	}
 
 	let autosaveTimer = null;
 	form.addEventListener('input', () => {
@@ -1215,7 +1436,25 @@
 	downloadJsonBtn.addEventListener('click', downloadJsonEntry);
 
 	slugInput.addEventListener('input', () => { userEditedSlug = true; });
-	titleInput.addEventListener('input', () => { if (!userEditedSlug) { slugInput.value = smartSlug(titleInput.value.trim()); } if (livePreviewCheckbox.checked) showPreview(); });
+	titleInput.addEventListener('input', () => { 
+		if (!userEditedSlug) { 
+			slugInput.value = smartSlug(titleInput.value.trim()); 
+		} 
+		if (livePreviewCheckbox.checked) showPreview(); 
+	});
 	imageInput.addEventListener('input', () => { if (livePreviewCheckbox.checked) showPreview(); });
 	bodyInput.addEventListener('input', () => { if (livePreviewCheckbox.checked) showPreview(); });
+
+	// Initialize the application
+	document.addEventListener('DOMContentLoaded', () => {
+		initializeApp();
+	});
+
+	// Fallback initialization if DOMContentLoaded already fired
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', initializeApp);
+	} else {
+		// DOM is already ready
+		setTimeout(initializeApp, 0);
+	}
 })();
