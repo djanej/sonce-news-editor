@@ -554,6 +554,22 @@ button.primary::before {
 	font-weight: 700;
 }
 
+.modal-header button {
+	cursor: pointer;
+	background: none;
+	border: none;
+	font-size: 24px;
+	color: var(--text);
+	padding: 4px 8px;
+	border-radius: 4px;
+	transition: all 0.2s ease;
+}
+
+.modal-header button:hover {
+	background: var(--border);
+	color: var(--primary);
+}
+
 .modal-body { 
 	padding: 24px; 
 	overflow: auto; 
