@@ -381,6 +381,7 @@
 	}
 	function refreshTemplateSelect() {
 		try {
+			if (!templateSelect) return;
 			const templates = loadTemplates();
 			templateSelect.innerHTML = '<option value="">Select template…</option>';
 			templates.forEach((t, i) => {
@@ -394,12 +395,6 @@
 		}
 	}
 
-	// Set default date to today
-	const today = new Date();
-	const yyyy = today.getFullYear();
-	const mm = String(today.getMonth() + 1).padStart(2, '0');
-	const dd = String(today.getDate()).padStart(2, '0');
-	dateInput.value = `${yyyy}-${mm}-${dd}`;
 
 	function transliterateToAscii(input) {
 		const map = {
@@ -1147,11 +1142,7 @@
 	}
 
 	let autosaveTimer = null;
-	form.addEventListener('input', () => {
-		clearTimeout(autosaveTimer);
-		autosaveTimer = setTimeout(saveAutosave, 800);
-	});
-
+	// Moved into setupAutosave/initializeApp to avoid early null deref
 	// initAutosaveBanner moved to initializeApp
 
 	// Tag suggestions
@@ -1395,15 +1386,6 @@
 		});
 	});
 
-	// Fallback initialization if DOMContentLoaded already fired
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', initializeApp);
-	} else {
-		// DOM is already ready
-		setTimeout(initializeApp, 0);
-	}
-
-	
 
 	// Set up all event handlers
 	function setupEventHandlers() {
