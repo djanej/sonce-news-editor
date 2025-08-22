@@ -6,7 +6,7 @@ Kopiranje, distribuiranje ali uporaba brez dovoljenja lastnika ni dovoljena.
 Če imate vprašanja glede uporabe ali dovoljenj, nas kontaktirajte.
 
 © 2025 Sonce. Vse pravice pridržane.
-
+-----------------------------------------------------------------------------------------------------------
 
 
 # Sonce News Editor
