@@ -31,14 +31,47 @@
 					</div>
 				</div>
 
-				<div class="field">
-					<label for="image">Hero Image URL</label>
-					<input type="url" id="image" name="image" placeholder="/uploads/news/hero-image.jpg" />
+				<div class="field-group">
+					<div class="field">
+						<label for="slug">Slug</label>
+						<input type="text" id="slug" name="slug" placeholder="auto-from-title" />
+						<p class="hint">Used in filename and URLs (leave blank to auto-generate).</p>
+					</div>
+					<div class="field">
+						<label for="tags">Tags / Category</label>
+						<input type="text" id="tags" name="tags" placeholder="Comma separated, e.g. events, community" />
+					</div>
 				</div>
 
 				<div class="field">
-					<label for="tags">Tags / Category</label>
-					<input type="text" id="tags" name="tags" placeholder="Comma separated, e.g. events, community" />
+					<label for="summary">Summary</label>
+					<textarea id="summary" name="summary" rows="3" placeholder="Short excerpt shown on the listing page (optional)"></textarea>
+					<p class="hint">If empty, it will be generated from the first part of the body.</p>
+				</div>
+
+				<div class="field-group">
+					<div class="field">
+						<label for="image">Hero Image URL</label>
+						<input type="url" id="image" name="image" placeholder="/static/uploads/news/hero-image.jpg" />
+						<p class="hint">Prefer paths under /static/uploads/news/</p>
+					</div>
+					<div class="field">
+						<label for="imageAlt">Image Alt Text</label>
+						<input type="text" id="imageAlt" name="imageAlt" placeholder="Short description for accessibility" />
+					</div>
+				</div>
+
+				<div class="field-group">
+					<div class="field">
+						<label for="imageFile">Upload Hero Image</label>
+						<input type="file" id="imageFile" name="imageFile" accept="image/*" />
+						<p class="hint">Optional. If provided and saving to repo, it will be copied to /static/uploads/news/</p>
+					</div>
+					<div class="field">
+						<label for="importMd">Import Markdown (.md)</label>
+						<input type="file" id="importMd" name="importMd" accept="text/markdown,.md" />
+						<p class="hint">Populate fields from an existing post file.</p>
+					</div>
 				</div>
 
 				<div class="field">
@@ -49,6 +82,20 @@
 				<div class="actions">
 					<button type="button" id="preview-btn">Preview</button>
 					<button type="button" id="download-btn" class="primary">Download Markdown</button>
+					<button type="button" id="copy-json-btn">Copy JSON Entry</button>
+					<button type="button" id="download-json-btn">Download JSON Entry</button>
+				</div>
+
+				<div class="repo-actions">
+					<div class="repo-row">
+						<button type="button" id="connect-repo-btn">Connect Repo Folder</button>
+						<span id="repo-status" class="hint">Not connected</span>
+					</div>
+					<div class="repo-row">
+						<button type="button" id="save-repo-btn" class="primary" disabled>Save to Repo</button>
+						<button type="button" id="rebuild-index-btn" disabled>Rebuild Index</button>
+						<span class="hint">Saves Markdown to content/news and updates content/news/index.json</span>
+					</div>
 				</div>
 			</form>
 		</section>

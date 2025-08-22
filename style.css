@@ -52,7 +52,7 @@ h1 { margin: 0; font-size: 24px; }
 
 label { display: block; font-weight: 600; margin-bottom: 6px; }
 .required { color: var(--accent); margin-left: 6px; }
-.hint { color: var(--muted); margin: 0; font-size: 13px; }
+.hint { color: var(--muted); margin: 4px 0 0; font-size: 13px; }
 .placeholder { color: var(--muted); }
 
 input[type="text"], input[type="date"], input[type="url"], textarea {
@@ -67,7 +67,7 @@ input[type="text"], input[type="date"], input[type="url"], textarea {
 input::placeholder, textarea::placeholder { color: #64748b; }
 input:focus, textarea:focus { border-color: #334155; box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15); }
 
-.actions { display: flex; gap: 10px; margin-top: 12px; }
+.actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
 button {
 	appearance: none;
 	border: 1px solid var(--border);
@@ -97,6 +97,9 @@ button.primary:hover { filter: brightness(0.95); }
 .preview-content ul, .preview-content ol { padding-left: 24px; }
 .preview-content code { background: #0a0f1c; padding: 2px 6px; border-radius: 4px; }
 .preview-content pre { background: #0a0f1c; padding: 10px; border-radius: 6px; overflow: auto; }
+
+.repo-actions { margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 12px; }
+.repo-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
 
 @media (max-width: 900px) {
 	.container { grid-template-columns: 1fr; }
