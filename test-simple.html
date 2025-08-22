@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Test - Sonce News Editor</title>
+	<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+	<header class="app-header">
+		<div class="header-content">
+			<div class="title-section">
+				<span class="sun-icon">☀️</span>
+				<h1>Sonce News Editor - Test</h1>
+			</div>
+			<p class="subtitle">Testing basic functionality</p>
+		</div>
+	</header>
+
+	<main class="container">
+		<section class="editor">
+			<form id="news-form" novalidate>
+				<div class="field">
+					<label for="title">Title<span class="required">*</span></label>
+					<input type="text" id="title" name="title" placeholder="Enter news title" required />
+				</div>
+
+				<div class="field">
+					<label for="date">Date<span class="required">*</span></label>
+					<input type="date" id="date" name="date" required />
+				</div>
+
+				<div class="field">
+					<label for="body">Body Content (Markdown)</label>
+					<textarea id="body" name="body" rows="5" placeholder="Write your news content here..."></textarea>
+				</div>
+
+				<div class="actions">
+					<button type="button" id="preview-btn">Preview</button>
+					<button type="button" id="download-btn" class="primary">Download Markdown</button>
+				</div>
+			</form>
+		</section>
+
+		<aside class="preview">
+			<div class="preview-header">
+				<h2>Preview</h2>
+			</div>
+			<div id="preview-content" class="preview-content">
+				<div class="placeholder">
+					<span class="placeholder-icon">📝</span>
+					<p>Click Preview to see a live rendering here.</p>
+				</div>
+			</div>
+		</aside>
+	</main>
+
+	<div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+	<script>
+		// Simple test script
+		console.log('Test script loaded');
+		
+		// Test basic functionality
+		document.addEventListener('DOMContentLoaded', () => {
+			console.log('DOM loaded');
+			
+			const titleInput = document.getElementById('title');
+			const dateInput = document.getElementById('date');
+			const bodyInput = document.getElementById('body');
+			const previewBtn = document.getElementById('preview-btn');
+			const downloadBtn = document.getElementById('download-btn');
+			const previewContent = document.getElementById('preview-content');
+			
+			// Set default date
+			const today = new Date();
+			const yyyy = today.getFullYear();
+			const mm = String(today.getMonth() + 1).padStart(2, '0');
+			const dd = String(today.getDate()).padStart(2, '0');
+			dateInput.value = `${yyyy}-${mm}-${dd}`;
+			
+			// Test preview button
+			previewBtn.addEventListener('click', () => {
+				console.log('Preview button clicked');
+				const title = titleInput.value.trim();
+				const body = bodyInput.value.trim();
+				
+				if (!title) {
+					alert('Please enter a title');
+					return;
+				}
+				
+				const html = `
+					<h1>${title}</h1>
+					<div>${body.replace(/\n/g, '<br>')}</div>
+				`;
+				previewContent.innerHTML = html;
+			});
+			
+			// Test download button
+			downloadBtn.addEventListener('click', () => {
+				console.log('Download button clicked');
+				const title = titleInput.value.trim();
+				const date = dateInput.value;
+				const body = bodyInput.value.trim();
+				
+				if (!title) {
+					alert('Please enter a title');
+					return;
+				}
+				
+				const markdown = `---
+title: ${title}
+date: ${date}
+---
+
+${body}`;
+				
+				const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement('a');
+				a.href = url;
+				a.download = `${date}-${title.toLowerCase().replace(/\s+/g, '-')}.md`;
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+				URL.revokeObjectURL(url);
+				
+				alert('Markdown downloaded!');
+			});
+			
+			console.log('Test setup complete');
+		});
+	</script>
+</body>
+</html>
