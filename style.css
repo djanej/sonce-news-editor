@@ -34,11 +34,35 @@ body {
 	font-size: 16px;
 }
 
+/* Skip link */
+.skip-link {
+	position: absolute;
+	top: -40px;
+	left: 16px;
+	background: var(--primary);
+	color: #fff;
+	padding: 8px 12px;
+	border-radius: 8px;
+	text-decoration: none;
+	transition: top 0.2s ease;
+	z-index: 100;
+}
+.skip-link:focus {
+	top: 16px;
+	outline: 2px solid #fff;
+	outline-offset: 2px;
+}
+
 .app-header, .app-footer {
 	padding: 20px 24px;
 	border-bottom: 2px solid var(--border);
 	background: linear-gradient(135deg, var(--panel) 0%, var(--warm-white) 100%);
 	box-shadow: 0 2px 20px var(--shadow);
+}
+
+/* Prevent background scroll when modal is open */
+.body-scroll-lock {
+	overflow: hidden;
 }
 
 .app-footer { 

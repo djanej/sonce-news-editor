@@ -6,8 +6,10 @@
 	<title>Sonce News Editor</title>
 	<link rel="stylesheet" href="style.css" />
 	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀️</text></svg>" />
+
 </head>
 <body>
+	<a href="#main-content" class="skip-link">Skip to main content</a>
 	<header class="app-header">
 		<div class="header-content">
 			<div class="title-section">
@@ -26,14 +28,14 @@
 		</div>
 	</div>
 
-	<main class="container">
+	<main id="main-content" class="container" role="main" tabindex="-1">
 		<section class="editor">
 			<form id="news-form" novalidate>
 				<div class="field">
 					<label for="title">Title<span class="required">*</span></label>
 					<input type="text" id="title" name="title" placeholder="Enter news title" required />
 				</div>
-
+				
 				<div class="field-group">
 					<div class="field">
 						<label for="date">Date<span class="required">*</span></label>
@@ -44,7 +46,7 @@
 						<input type="text" id="author" name="author" placeholder="Sindikata Sonce Koper" />
 					</div>
 				</div>
-
+				
 				<div class="field-group">
 					<div class="field">
 						<label for="slug">Slug</label>
@@ -56,15 +58,15 @@
 						<input type="text" id="tags" name="tags" placeholder="Comma separated, e.g. events, community" />
 					</div>
 				</div>
-
+				
 				<div id="tag-suggestions" class="tag-suggestions" aria-live="polite"></div>
-
+				
 				<div class="field">
 					<label for="summary">Summary</label>
 					<textarea id="summary" name="summary" rows="3" placeholder="Short excerpt shown on the listing page (optional)"></textarea>
 					<p class="hint">If empty, it will be generated from the first part of the body.</p>
 				</div>
-
+				
 				<div class="field-group">
 					<div class="field">
 						<label for="image">Hero Image URL</label>
@@ -76,7 +78,7 @@
 						<input type="text" id="imageAlt" name="imageAlt" placeholder="Short description for accessibility" />
 					</div>
 				</div>
-
+				
 				<div class="field-group">
 					<div class="field">
 						<label for="imageFile">Upload Hero Image</label>
@@ -89,20 +91,20 @@
 						<p class="hint">Populate fields from an existing post file.</p>
 					</div>
 				</div>
-
+				
 				<div class="field">
 					<label for="attachments">Additional Image Attachments</label>
 					<input type="file" id="attachments" name="attachments" accept="image/*" multiple />
 					<p class="hint">Optional. These will be inserted and saved to /static/uploads/news/YYYY/MM/</p>
 				</div>
-
+				
 				<div id="drop-zone" class="drop-zone" aria-label="Drop images here or paste (Ctrl+V)">
 					<div class="drop-zone-content">
 						<span class="drop-icon">📁</span>
 						<p>Drag & drop images here or paste (Ctrl+V)</p>
 					</div>
 				</div>
-
+				
 				<div class="toolbar">
 					<div class="toolbar-left">
 						<button type="button" data-md="h1" title="Heading 1">H1</button>
@@ -124,13 +126,13 @@
 						<button type="button" id="history-btn" title="Version history">History</button>
 					</div>
 				</div>
-
+				
 				<div class="field">
 					<label for="body">Body Content (Markdown)</label>
 					<textarea id="body" name="body" rows="14" placeholder="Write your news content here using Markdown..." aria-describedby="body-hint"></textarea>
 					<p id="body-hint" class="hint">Use the toolbar above for quick formatting or type Markdown directly.</p>
 				</div>
-
+				
 				<div class="templates">
 					<div class="templates-row">
 						<select id="template-select">
@@ -144,7 +146,7 @@
 						<button type="button" id="save-template-btn">Save as New</button>
 					</div>
 				</div>
-
+				
 				<div class="actions">
 					<button type="button" id="preview-btn">Preview</button>
 					<button type="button" id="download-btn" class="primary">Download Markdown</button>
@@ -153,21 +155,21 @@
 					<button type="button" id="copy-json-btn">Copy JSON Entry</button>
 					<button type="button" id="download-json-btn">Download JSON Entry</button>
 				</div>
-
+				
 				<div id="lint-panel" class="lint-panel" aria-live="polite"></div>
-
+				
 				<div class="field">
 					<label for="notes">Internal Notes (not exported)</label>
 					<textarea id="notes" rows="3" placeholder="Add private notes…"></textarea>
 				</div>
-
+				
 				<div class="drafts-actions">
 					<button type="button" id="add-draft-btn">Add to Drafts</button>
 					<button type="button" id="clear-drafts-btn">Clear Drafts</button>
 					<button type="button" id="download-zip-btn">Download Drafts ZIP</button>
 					<span id="drafts-count" class="hint">0 drafts</span>
 				</div>
-
+				
 				<div class="repo-actions">
 					<div class="repo-row">
 						<button type="button" id="connect-repo-btn">Connect Repo Folder</button>
@@ -181,7 +183,7 @@
 				</div>
 			</form>
 		</section>
-
+		
 		<aside class="preview">
 			<div class="preview-header">
 				<h2>Preview</h2>
