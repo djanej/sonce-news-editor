@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Sonce News Editor</title>
+	<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+	<header class="app-header">
+		<h1>Sonce News Editor</h1>
+		<p class="subtitle">Generate Markdown news posts with YAML frontmatter</p>
+	</header>
+
+	<main class="container">
+		<section class="editor">
+			<form id="news-form" novalidate>
+				<div class="field">
+					<label for="title">Title<span class="required">*</span></label>
+					<input type="text" id="title" name="title" placeholder="Enter news title" required />
+				</div>
+
+				<div class="field-group">
+					<div class="field">
+						<label for="date">Date<span class="required">*</span></label>
+						<input type="date" id="date" name="date" required />
+					</div>
+					<div class="field">
+						<label for="author">Author</label>
+						<input type="text" id="author" name="author" placeholder="Sindikata Sonce Koper" />
+					</div>
+				</div>
+
+				<div class="field">
+					<label for="image">Hero Image URL</label>
+					<input type="url" id="image" name="image" placeholder="/uploads/news/hero-image.jpg" />
+				</div>
+
+				<div class="field">
+					<label for="tags">Tags / Category</label>
+					<input type="text" id="tags" name="tags" placeholder="Comma separated, e.g. events, community" />
+				</div>
+
+				<div class="field">
+					<label for="body">Body Content (Markdown)</label>
+					<textarea id="body" name="body" rows="14" placeholder="Write your news content here using Markdown..."></textarea>
+				</div>
+
+				<div class="actions">
+					<button type="button" id="preview-btn">Preview</button>
+					<button type="button" id="download-btn" class="primary">Download Markdown</button>
+				</div>
+			</form>
+		</section>
+
+		<aside class="preview">
+			<div class="preview-header">
+				<h2>Preview</h2>
+				<p class="hint">Renders Markdown below. Frontmatter not shown.</p>
+			</div>
+			<div id="preview-content" class="preview-content">
+				<p class="placeholder">Click Preview to see a live rendering here.</p>
+			</div>
+		</aside>
+	</main>
+
+	<footer class="app-footer">
+		<p>Made for Sonce — Local Markdown generator. No uploads, all in your browser.</p>
+	</footer>
+
+	<script src="script.js"></script>
+</body>
+</html>
