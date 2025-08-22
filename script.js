@@ -129,24 +129,53 @@
 	function openModal(title, contentEl) {
 		try {
 			const overlay = document.getElementById('modal-overlay');
-			if (!overlay) return;
+			const closeBtn = document.getElementById('modal-close');
+			if (!overlay || !closeBtn) return;
 			
-			document.getElementById('modal-title').textContent = title || '';
+			// Clear any existing content and set new content
+			document.getElementById('modal-title').textContent = title || 'Modal';
 			const body = document.getElementById('modal-body');
 			body.innerHTML = '';
-			body.appendChild(contentEl);
+			if (contentEl) {
+				body.appendChild(contentEl);
+			}
+			
+			// Show the modal
 			overlay.hidden = false;
 			
-			document.getElementById('modal-close').onclick = () => { 
+			// Set up close button handler
+			closeBtn.onclick = () => { 
 				overlay.hidden = true; 
 			};
 			
+			// Set up overlay click handler to close modal
 			overlay.addEventListener('click', (e) => { 
 				if (e.target === overlay) overlay.hidden = true; 
 			}, { once: true });
+			
+			// Add escape key handler
+			const escapeHandler = (e) => {
+				if (e.key === 'Escape') {
+					overlay.hidden = true;
+					document.removeEventListener('keydown', escapeHandler);
+				}
+			};
+			document.addEventListener('keydown', escapeHandler);
+			
 		} catch (error) {
 			console.error('Failed to open modal:', error);
 			toast('Failed to open modal', 'error');
+		}
+	}
+
+	function closeModal() {
+		try {
+			const overlay = document.getElementById('modal-overlay');
+			if (overlay) {
+				overlay.hidden = true;
+			}
+		} catch (error) {
+			console.error('Failed to close modal:', error);
 		}
 	}
 
@@ -1448,6 +1477,30 @@
 	// Initialize the application
 	document.addEventListener('DOMContentLoaded', () => {
 		initializeApp();
+	});
+
+	// Ensure modal close button always works
+	document.addEventListener('DOMContentLoaded', () => {
+		const closeBtn = document.getElementById('modal-close');
+		if (closeBtn) {
+			closeBtn.addEventListener('click', () => {
+				const overlay = document.getElementById('modal-overlay');
+				if (overlay) {
+					overlay.hidden = true;
+				}
+			});
+		}
+		
+		// Add global function to force close modal
+		window.forceCloseModal = () => {
+			const overlay = document.getElementById('modal-overlay');
+			if (overlay) {
+				overlay.hidden = true;
+				console.log('Modal force closed');
+			} else {
+				console.log('No modal found');
+			}
+		};
 	});
 
 	// Fallback initialization if DOMContentLoaded already fired
