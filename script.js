@@ -140,6 +140,8 @@
 	// Initialize the application
 	function initializeApp() {
 		try {
+			console.log('Initializing application...');
+			
 			// Initialize DOM elements first
 			initializeDOMElements();
 			
@@ -162,20 +164,40 @@
 			// Load autosaved content if available
 			loadAutosave();
 
-		// Initialize other components
-		refreshTemplateSelect();
-		updateDraftsCount();
-
-		// Set up autosave
-		setupAutosave();
-		
-		// Final safety check: ensure overlay is hidden
-		setTimeout(() => {
-			if (dropOverlay && !dropOverlay.hidden) {
-				console.log('Final safety check: hiding overlay');
-				showDropOverlay(false);
+			// Initialize autosave banner
+			const data = getAutosave();
+			if (data && restoreBanner) {
+				restoreBanner.hidden = false;
+				restoreBtn.onclick = () => { 
+					deserializeForm(data); 
+					restoreBanner.hidden = true; 
+					toast('Draft restored', 'success'); 
+				};
+				dismissRestoreBtn.onclick = () => { 
+					restoreBanner.hidden = true; 
+					clearAutosave(); 
+				};
 			}
-		}, 100);
+
+			// Initialize other components
+			refreshTemplateSelect();
+			updateDraftsCount();
+
+			// Set up autosave
+			setupAutosave();
+			
+			// Set up all event handlers
+			setupEventHandlers();
+			
+			// Final safety check: ensure overlay is hidden
+			setTimeout(() => {
+				if (dropOverlay && !dropOverlay.hidden) {
+					console.log('Final safety check: hiding overlay');
+					showDropOverlay(false);
+				}
+			}, 100);
+			
+			console.log('Application initialized successfully');
 		} catch (error) {
 			console.error('Failed to initialize app:', error);
 			toast('Failed to initialize application', 'error');
@@ -686,7 +708,7 @@
 			}
 			
 			// Simple markdown to HTML conversion for preview
-			let html = md.replace(/^---[\s\S]*?---/, ''); // Remove frontmatter
+			let html = md.replace(/^---[\s\S]*?---\n?/, ''); // Remove frontmatter
 			html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
 			html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
 			html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
@@ -706,13 +728,7 @@
 		}
 	}
 
-	// Live preview
-	livePreviewCheckbox.addEventListener('change', () => {
-		if (livePreviewCheckbox.checked) showPreview();
-	});
-	bodyInput.addEventListener('input', () => {
-		if (livePreviewCheckbox.checked) showPreview();
-	});
+	// Live preview - moved to setupEventHandlers
 
 	// Import Markdown (.md) and populate fields
 	function parseFrontmatter(md) {
@@ -757,28 +773,7 @@
 		return { attrs, body };
 	}
 
-	importMdInput.addEventListener('change', async (e) => {
-		const file = e.target.files && e.target.files[0];
-		if (!file) return;
-		const text = await file.text();
-		const { attrs, body } = parseFrontmatter(text);
-		titleInput.value = attrs.title || titleInput.value;
-		dateInput.value = attrs.date || dateInput.value;
-		authorInput.value = attrs.author || '';
-		imageInput.value = attrs.image || '';
-		imageAltInput.value = attrs.imageAlt || '';
-		summaryInput.value = attrs.summary || '';
-		tagsInput.value = Array.isArray(attrs.tags) ? attrs.tags.join(', ') : (attrs.tags || '');
-		bodyInput.value = body || '';
-		const nameMatch = file.name.match(/^(\d{4}-\d{2}-\d{2})-(.+)\.md$/);
-		if (nameMatch) {
-			slugInput.value = nameMatch[2];
-			userEditedSlug = true;
-		} else if (attrs.title) {
-			slugInput.value = smartSlug(attrs.title);
-		}
-		toast('Markdown imported', 'success');
-	});
+	// Import Markdown handler - moved to setupEventHandlers
 
 	// FS Access helpers
 	function apiSupported() { return !!window.showDirectoryPicker; }
@@ -824,20 +819,7 @@
 		return names;
 	}
 
-	connectRepoBtn.addEventListener('click', async () => {
-		if (!apiSupported()) { toast('File System Access API is not supported in this browser', 'error'); return; }
-		try {
-			repoDirHandle = await window.showDirectoryPicker({ id: 'sonce-news-repo' });
-			const ok = await verifyPermission(repoDirHandle, true);
-			if (!ok) { repoDirHandle = null; toast('Permission denied', 'error'); return; }
-			await ensureDir(repoDirHandle, ['content', 'news']);
-			await ensureDir(repoDirHandle, ['static', 'uploads', 'news']);
-			repoStatusEl.textContent = `Connected: ${repoDirHandle.name}`;
-			saveRepoBtn.disabled = false;
-			rebuildIndexBtn.disabled = false;
-			toast('Repo connected', 'success');
-		} catch (err) { console.error(err); toast('Failed to connect to folder', 'error'); }
-	});
+	// Connect repo handler - moved to setupEventHandlers
 
 	async function copyAttachmentToRepo(file, yyyy, mm, date, baseName) {
 		const imgDir = await ensureDir(repoDirHandle, ['static', 'uploads', 'news', yyyy, mm]);
@@ -861,56 +843,7 @@
 		if (livePreviewCheckbox.checked) showPreview();
 	}
 
-	// Toolbar actions
-	toolbar.addEventListener('click', (e) => {
-		const btn = e.target.closest('button');
-		if (!btn) return;
-		const action = btn.dataset.md;
-		switch (action) {
-			case 'h1': insertAtCursor(bodyInput, '# ', ''); break;
-			case 'h2': insertAtCursor(bodyInput, '## ', ''); break;
-			case 'h3': insertAtCursor(bodyInput, '### ', ''); break;
-			case 'bold': insertAtCursor(bodyInput, '**', '**', 'bold'); break;
-			case 'italic': insertAtCursor(bodyInput, '*', '*', 'italic'); break;
-			case 'ul': insertAtCursor(bodyInput, '- ', ''); break;
-			case 'ol': insertAtCursor(bodyInput, '1. ', ''); break;
-			case 'quote': insertAtCursor(bodyInput, '> ', ''); break;
-			case 'code': insertAtCursor(bodyInput, '```\n', '\n```', 'code'); break;
-			case 'link': insertAtCursor(bodyInput, '[', '](https://)', 'text'); break;
-			default: break;
-		}
-	});
-
-	insertHeroBtn.addEventListener('click', () => {
-		const url = imageInput.value.trim();
-		const alt = imageAltInput.value.trim() || titleInput.value.trim();
-		if (!url) { toast('No hero image URL set', 'error'); return; }
-		insertAtCursor(bodyInput, `![${alt}](${url})\n\n`, '');
-		toast('Hero image inserted');
-	});
-
-	insertAttachmentsBtn.addEventListener('click', async () => {
-		if (!attachmentsInput.files || attachmentsInput.files.length === 0) { toast('No attachments selected', 'error'); return; }
-		const date = dateInput.value;
-		const yyyy = date.slice(0, 4);
-		const mm = date.slice(5, 7);
-		const slug = getEffectiveSlug();
-		let lines = '';
-		for (let i = 0; i < attachmentsInput.files.length; i++) {
-			const f = attachmentsInput.files[i];
-			let imgUrl = '';
-			if (repoDirHandle) {
-				const baseName = `${slug || 'post'}-att-${String(i + 1).padStart(2, '0')}`;
-				imgUrl = await copyAttachmentToRepo(f, yyyy, mm, date, baseName);
-			} else {
-				imgUrl = URL.createObjectURL(f);
-			}
-			trackedAssets.push({ file: f, name: f.name, alt: f.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ') });
-			lines += `![${f.name}](${imgUrl})\n\n`;
-		}
-		insertAtCursor(bodyInput, lines, '');
-		toast('Attachments inserted');
-	});
+	// Toolbar actions - moved to setupEventHandlers
 
 	function downloadsZip(files) {
 		// Minimal uncompressed ZIP (store) writer
@@ -1001,40 +934,7 @@
 		URL.revokeObjectURL(url);
 	}
 
-	addDraftBtn.addEventListener('click', () => {
-		const md = buildMarkdown();
-		if (!md) return;
-		const slug = getEffectiveSlug();
-		const base = `${dateInput.value}-${slug || 'post'}.md`;
-		const drafts = loadDrafts();
-		const existing = drafts.map(d => d.filename);
-		const filename = getVersionedFilename(base, existing);
-		drafts.push({ filename, content: md });
-		saveDrafts(drafts);
-		toast(`Saved as draft: ${filename}`, 'success');
-	});
-
-	clearDraftsBtn.addEventListener('click', () => {
-		if (!confirm('Clear all drafts?')) return;
-		saveDrafts([]);
-	});
-
-	downloadZipBtn.addEventListener('click', () => {
-		const drafts = loadDrafts();
-		if (drafts.length === 0) { toast('No drafts to download', 'error'); return; }
-		const encoder = new TextEncoder();
-		const files = drafts.flatMap(d => {
-			const html = renderMarkdown((d.content || '').replace(/^---[\s\S]*?---\n?/, ''));
-			const manifest = JSON.stringify({ schemaVersion: '1.0.0', generator: { name: 'sonce-news-editor', version: '0.1.0' }, post: { file: 'post.md', html: 'post.html' } }, null, 2);
-			const baseDir = d.filename.replace(/\.md$/,'');
-			return [
-				{ name: `${baseDir}/post.md`, data: encoder.encode(d.content) },
-				{ name: `${baseDir}/post.html`, data: encoder.encode(html) },
-				{ name: `${baseDir}/manifest.json`, data: encoder.encode(manifest) },
-			];
-		});
-		downloadsZip(files);
-	});
+	// Draft handlers - moved to setupEventHandlers
 
 	// Templates manager
 	function currentFormToTemplatePayload() {
@@ -1079,78 +979,11 @@
 		refreshTemplateSelect();
 	})();
 
-	saveTemplateBtn.addEventListener('click', () => {
-		const name = templateNameInput.value.trim();
-		if (!name) { toast('Enter a template name', 'error'); return; }
-		const templates = loadTemplates();
-		templates.push({ name, payload: currentFormToTemplatePayload() });
-		saveTemplates(templates);
-		templateNameInput.value = '';
-		toast('Template saved', 'success');
-	});
-	applyTemplateBtn.addEventListener('click', () => {
-		const idx = templateSelect.value;
-		if (idx === '') return;
-		const templates = loadTemplates();
-		const t = templates[Number(idx)];
-		applyTemplatePayload(t && t.payload);
-	});
-	deleteTemplateBtn.addEventListener('click', () => {
-		const idx = templateSelect.value;
-		if (idx === '') return;
-		const templates = loadTemplates();
-		templates.splice(Number(idx), 1);
-		saveTemplates(templates);
-	});
+	// Template handlers - moved to setupEventHandlers
 	refreshTemplateSelect();
 	updateDraftsCount();
 
-	// Repo save and index rebuild
-	saveRepoBtn.addEventListener('click', async () => {
-		if (!repoDirHandle) { toast('Connect a repo folder first', 'error'); return; }
-		const md = buildMarkdown();
-		if (!md) return;
-		try {
-			const date = dateInput.value;
-			const yyyy = date.slice(0, 4);
-			const mm = date.slice(5, 7);
-			const slug = getEffectiveSlug();
-			slugInput.value = slug;
-
-			const newsDir = await ensureDir(repoDirHandle, ['content', 'news']);
-
-			// Optional hero copy
-			if (imageFileInput.files && imageFileInput.files[0]) {
-				const img = imageFileInput.files[0];
-				const imgUrl = await copyAttachmentToRepo(img, yyyy, mm, date, `${slug || 'post'}-hero`);
-				imageInput.value = imageInput.value.trim() || imgUrl;
-			}
-
-			// Optional attachments copy
-			if (attachmentsInput.files && attachmentsInput.files.length) {
-				for (let i = 0; i < attachmentsInput.files.length; i++) {
-					const f = attachmentsInput.files[i];
-					await copyAttachmentToRepo(f, yyyy, mm, date, `${slug || 'post'}-att-${String(i + 1).padStart(2, '0')}`);
-				}
-			}
-
-			// Versioning based on existing files
-			const existingNames = await listFileNames(newsDir);
-			const baseName = `${date}-${slug || 'post'}.md`;
-			const filename = getVersionedFilename(baseName, existingNames);
-			await writeFile(newsDir, filename, new Blob([md], { type: 'text/markdown;charset=utf-8' }));
-			await updateIndexJson(repoDirHandle, filename);
-			repoStatusEl.textContent = `Saved: ${filename}`;
-			toast('Saved to repo', 'success');
-			await saveSnapshot('Auto snapshot on Save to Repo');
-		} catch (err) { console.error(err); toast('Save failed. See console for details', 'error'); }
-	});
-
-	rebuildIndexBtn.addEventListener('click', async () => {
-		if (!repoDirHandle) { toast('Connect a repo folder first', 'error'); return; }
-		try { await rebuildIndex(repoDirHandle); toast('Index rebuilt', 'success'); }
-		catch (err) { console.error(err); toast('Rebuild failed. See console for details', 'error'); }
-	});
+	// Repo save and index rebuild - moved to setupEventHandlers
 
 	async function updateIndexJson(rootHandle, filenameJustSaved) {
 		const newsDir = await ensureDir(rootHandle, ['content', 'news']);
@@ -1218,20 +1051,19 @@
 			updatedAt: new Date().toISOString()
 		};
 	}
-	function deserializeForm(data) {
-		if (!data) return;
-		titleInput.value = data.title || '';
-		dateInput.value = data.date || dateInput.value;
-		authorInput.value = data.author || '';
-		slugInput.value = data.slug || '';
-		imageInput.value = data.image || '';
-		imageAltInput.value = data.imageAlt || '';
-		tagsInput.value = data.tags || '';
-		summaryInput.value = data.summary || '';
-		bodyInput.value = data.body || '';
-		if (notesInput) notesInput.value = data.notes || '';
-		if (livePreviewCheckbox.checked) showPreview();
+	
+	function getAutosave() {
+		try {
+			const stored = localStorage.getItem(AUTOSAVE_KEY);
+			if (stored) {
+				return JSON.parse(stored);
+			}
+		} catch (error) {
+			console.error('Failed to get autosave:', error);
+		}
+		return null;
 	}
+	
 	function loadAutosave() {
 		try {
 			const stored = localStorage.getItem(AUTOSAVE_KEY);
@@ -1254,6 +1086,21 @@
 			console.error('Failed to load autosave:', error);
 			clearAutosave();
 		}
+	}
+	
+	function deserializeForm(data) {
+		if (!data) return;
+		titleInput.value = data.title || '';
+		dateInput.value = data.date || dateInput.value;
+		authorInput.value = data.author || '';
+		slugInput.value = data.slug || '';
+		imageInput.value = data.image || '';
+		imageAltInput.value = data.imageAlt || '';
+		tagsInput.value = data.tags || '';
+		summaryInput.value = data.summary || '';
+		bodyInput.value = data.body || '';
+		if (notesInput) notesInput.value = data.notes || '';
+		if (livePreviewCheckbox.checked) showPreview();
 	}
 
 	function saveAutosave() {
@@ -1302,14 +1149,7 @@
 		autosaveTimer = setTimeout(saveAutosave, 800);
 	});
 
-	(function initAutosaveBanner() {
-		const data = getAutosave();
-		if (data && restoreBanner) {
-			restoreBanner.hidden = false;
-			restoreBtn.onclick = () => { deserializeForm(data); restoreBanner.hidden = true; toast('Draft restored', 'success'); };
-			dismissRestoreBtn.onclick = () => { restoreBanner.hidden = true; clearAutosave(); };
-		}
-	})();
+	// initAutosaveBanner moved to initializeApp
 
 	// Tag suggestions
 	function suggestTags() {
@@ -1321,16 +1161,7 @@
 		const top = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0, 5).map(([k]) => k);
 		tagSuggestionsEl.innerHTML = top.map(t => `<span class="chip" data-tag="${t}">${t}</span>`).join('');
 	}
-	titleInput.addEventListener('input', suggestTags);
-	bodyInput.addEventListener('input', suggestTags);
-	tagSuggestionsEl.addEventListener('click', (e) => {
-		const chip = e.target.closest('.chip');
-		if (!chip) return;
-		const tag = chip.dataset.tag;
-		const tags = parseTags(tagsInput.value);
-		if (!tags.includes(tag)) tags.push(tag);
-		tagsInput.value = tags.join(', ');
-	});
+	// Tag suggestions - moved to setupEventHandlers
 
 	// Validation & lint panel
 	function validateContentDetailed() {
@@ -1356,8 +1187,7 @@
 		const results = validateContentDetailed();
 		lintPanel.innerHTML = results.map(r => `<div class="${r.level}">• ${r.msg}</div>`).join('');
 	}
-	bodyInput.addEventListener('input', renderLintPanel);
-	summaryInput.addEventListener('input', renderLintPanel);
+	// Validation & lint panel - moved to setupEventHandlers
 
 	// Drag & drop and paste
 	function showDropOverlay(show) { 
@@ -1374,60 +1204,8 @@
 	window.addEventListener('error', () => showDropOverlay(false));
 	window.addEventListener('load', () => showDropOverlay(false));
 	
-	// Force hide button
-	const forceHideBtn = document.getElementById('force-hide-overlay');
-	if (forceHideBtn) {
-		forceHideBtn.addEventListener('click', () => {
-			showDropOverlay(false);
-			toast('Overlay manually hidden', 'info');
-		});
-	}
-	
-	// Keyboard shortcut to force hide overlay (Ctrl+Shift+H)
-	document.addEventListener('keydown', (e) => {
-		if (e.ctrlKey && e.shiftKey && e.key === 'H') {
-			showDropOverlay(false);
-			toast('Overlay hidden with keyboard shortcut', 'info');
-		}
-	});
-	
-	['dragenter','dragover'].forEach(evt => {
-		document.addEventListener(evt, (e) => { 
-			e.preventDefault(); 
-			showDropOverlay(true); 
-			dropZone.classList.add('dragover'); 
-		});
-	});
-	['dragleave','drop'].forEach(evt => {
-		document.addEventListener(evt, (e) => { 
-			e.preventDefault(); 
-			if (evt === 'drop') return; 
-			showDropOverlay(false); 
-			dropZone.classList.remove('dragover'); 
-		});
-	});
-	dropZone.addEventListener('drop', async (e) => {
-		showDropOverlay(false); dropZone.classList.remove('dragover');
-		const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
-		if (!files.length) { toast('No images dropped', 'error'); return; }
-		for (const f of files) {
-			const defaultAlt = f.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
-			const alt = await quickPrompt('Alt text for image', defaultAlt);
-			await insertImageAsset(f, alt || defaultAlt);
-		}
-		toast('Images inserted', 'success');
-	});
-	window.addEventListener('paste', async (e) => {
-		const items = e.clipboardData && e.clipboardData.items ? [...e.clipboardData.items] : [];
-		const images = items.filter(i => i.type && i.type.startsWith('image/')).map(i => i.getAsFile()).filter(Boolean);
-		if (!images.length) return;
-		for (const f of images) {
-			const defaultAlt = 'pasted image';
-			const alt = await quickPrompt('Alt text for pasted image', defaultAlt);
-			await insertImageAsset(f, alt || defaultAlt);
-		}
-		toast('Pasted images inserted', 'success');
-	});
+	// Drag & drop handlers - moved to setupEventHandlers
+	// Drop zone and paste handlers - moved to setupEventHandlers
 
 	async function insertImageAsset(file, alt) {
 		const date = dateInput.value;
@@ -1493,7 +1271,7 @@
 		downloadsZip(files);
 		toast('Exported bundle', 'success');
 	}
-	exportBundleBtn.addEventListener('click', exportBundle);
+	// Export bundle handler - moved to setupEventHandlers
 
 	// Version history (IndexedDB)
 	function openHistoryDB() {
@@ -1536,83 +1314,13 @@
 		});
 	}
 
-	saveVersionBtn.addEventListener('click', async () => {
-		await saveSnapshot('Manual snapshot');
-		toast('Version saved', 'success');
-	});
+	// Version history handlers - moved to setupEventHandlers
 
-	historyBtn.addEventListener('click', async () => {
-		const list = await listSnapshots();
-		const wrap = document.createElement('div');
-		if (!list.length) { wrap.textContent = 'No versions yet.'; openModal('Version History', wrap); return; }
-		wrap.innerHTML = list.map((s, i) => `
-			<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1px solid #334155; padding:8px 0;">
-				<div>
-					<div><strong>${new Date(s.createdAt).toLocaleString()}</strong></div>
-					<div class="hint">${s.note || ''}</div>
-				</div>
-				<div style="display:flex; gap:8px;">
-					<button data-idx="${i}" data-act="preview">Preview</button>
-					<button data-idx="${i}" data-act="restore" class="primary">Restore</button>
-				</div>
-			</div>
-		`).join('');
-		wrap.addEventListener('click', (e) => {
-			const btn = e.target.closest('button'); if (!btn) return;
-			const idx = Number(btn.dataset.idx); const act = btn.dataset.act; const snap = list[idx];
-			if (act === 'restore') { deserializeForm(snap.data); toast('Version restored', 'success'); document.getElementById('modal-overlay').hidden = true; }
-			if (act === 'preview') { const pre = document.createElement('pre'); pre.textContent = JSON.stringify(snap.data, null, 2); openModal('Snapshot Preview', pre); }
-		});
-		openModal('Version History', wrap);
-	});
+	// Cheat sheet - moved to setupEventHandlers
 
-	// Cheat sheet
-	cheatSheetBtn.addEventListener('click', () => {
-		const el = document.createElement('div');
-		el.innerHTML = `
-			<h4>Markdown Basics</h4>
-			<ul>
-				<li><code>## Heading</code></li>
-				<li><code>**bold**</code>, <code>*italic*</code>, <code>\`code\`</code></li>
-				<li><code>- list</code> or <code>1. list</code></li>
-				<li><code>[text](https://example.com)</code></li>
-				<li><code>![alt](./assets/image.webp "caption")</code></li>
-			</ul>
-		`;
-		openModal('Cheat Sheet', el);
-	});
+	// Keyboard shortcuts - moved to setupEventHandlers
 
-	// Keyboard shortcuts
-	document.addEventListener('keydown', (e) => {
-		const isMac = navigator.platform.toUpperCase().indexOf('MAC')>=0;
-		const mod = isMac ? e.metaKey : e.ctrlKey;
-		if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); downloadBtn.click(); }
-		if (mod && e.key.toLowerCase() === 'p') { e.preventDefault(); livePreviewCheckbox.checked = !livePreviewCheckbox.checked; if (livePreviewCheckbox.checked) showPreview(); }
-		if (mod && e.key.toLowerCase() === 'b') { e.preventDefault(); insertAtCursor(bodyInput, '**', '**', 'bold'); }
-		if (mod && e.key.toLowerCase() === 'i') { e.preventDefault(); insertAtCursor(bodyInput, '*', '*', 'italic'); }
-		if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); insertAtCursor(bodyInput, '[', '](https://)', 'text'); }
-		if (mod && e.shiftKey && e.key.toLowerCase() === 'i') { e.preventDefault(); insertAttachmentsBtn.click(); }
-		if (mod && e.key.toLowerCase() === 'e') { e.preventDefault(); exportBundleBtn.click(); }
-		if (mod && e.altKey && e.key === '2') { e.preventDefault(); insertAtCursor(bodyInput, '## ', ''); }
-		if (mod && e.altKey && e.key === '3') { e.preventDefault(); insertAtCursor(bodyInput, '### ', ''); }
-		if (mod && e.altKey && e.key === '4') { e.preventDefault(); insertAtCursor(bodyInput, '#### ', ''); }
-	});
-
-	// Events
-	previewBtn.addEventListener('click', showPreview);
-	downloadBtn.addEventListener('click', downloadMarkdown);
-	copyJsonBtn.addEventListener('click', copyJsonEntry);
-	downloadJsonBtn.addEventListener('click', downloadJsonEntry);
-
-	slugInput.addEventListener('input', () => { userEditedSlug = true; });
-	titleInput.addEventListener('input', () => { 
-		if (!userEditedSlug) { 
-			slugInput.value = smartSlug(titleInput.value.trim()); 
-		} 
-		if (livePreviewCheckbox.checked) showPreview(); 
-	});
-	imageInput.addEventListener('input', () => { if (livePreviewCheckbox.checked) showPreview(); });
-	bodyInput.addEventListener('input', () => { if (livePreviewCheckbox.checked) showPreview(); });
+	// Events - moved to setupEventHandlers
 
 	// Initialize the application
 	document.addEventListener('DOMContentLoaded', () => {
@@ -1668,5 +1376,456 @@
 	} else {
 		// DOM is already ready
 		setTimeout(initializeApp, 0);
+	}
+
+	
+
+	// Set up all event handlers
+	function setupEventHandlers() {
+		try {
+			console.log('Setting up event handlers...');
+			
+			// Main action buttons
+			if (previewBtn) previewBtn.addEventListener('click', showPreview);
+			if (downloadBtn) downloadBtn.addEventListener('click', downloadMarkdown);
+			if (copyJsonBtn) copyJsonBtn.addEventListener('click', copyJsonEntry);
+			if (downloadJsonBtn) downloadJsonBtn.addEventListener('click', downloadJsonEntry);
+			if (exportBundleBtn) exportBundleBtn.addEventListener('click', exportBundle);
+			if (saveVersionBtn) saveVersionBtn.addEventListener('click', async () => {
+				await saveSnapshot('Manual snapshot');
+				toast('Version saved', 'success');
+			});
+			if (historyBtn) historyBtn.addEventListener('click', async () => {
+				const list = await listSnapshots();
+				const wrap = document.createElement('div');
+				if (!list.length) { 
+					wrap.textContent = 'No versions yet.'; 
+					openModal('Version History', wrap); 
+					return; 
+				}
+				wrap.innerHTML = list.map((s, i) => `
+					<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1px solid #334155; padding:8px 0;">
+						<div>
+							<div><strong>${new Date(s.createdAt).toLocaleString()}</strong></div>
+							<div class="hint">${s.note || ''}</div>
+						</div>
+						<div style="display:flex; gap:8px;">
+							<button data-idx="${i}" data-act="preview">Preview</button>
+							<button data-idx="${i}" data-act="restore" class="primary">Restore</button>
+						</div>
+					</div>
+				`).join('');
+				wrap.addEventListener('click', (e) => {
+					const btn = e.target.closest('button'); 
+					if (!btn) return;
+					const idx = Number(btn.dataset.idx); 
+					const act = btn.dataset.act; 
+					const snap = list[idx];
+					if (act === 'restore') { 
+						deserializeForm(snap.data); 
+						toast('Version restored', 'success'); 
+						closeModal();
+					}
+					if (act === 'preview') { 
+						const pre = document.createElement('pre'); 
+						pre.textContent = JSON.stringify(snap.data, null, 2); 
+						openModal('Snapshot Preview', pre); 
+					}
+				});
+				openModal('Version History', wrap);
+			});
+			if (cheatSheetBtn) cheatSheetBtn.addEventListener('click', () => {
+				const el = document.createElement('div');
+				el.innerHTML = `
+					<h4>Markdown Basics</h4>
+					<ul>
+						<li><code>## Heading</code></li>
+						<li><code>**bold**</code>, <code>*italic*</code>, <code>\`code\`</code></li>
+						<li><code>- list</code> or <code>1. list</code></li>
+						<li><code>[text](https://example.com)</code></li>
+						<li><code>![alt](./assets/image.webp "caption")</code></li>
+					</ul>
+				`;
+				openModal('Cheat Sheet', el);
+			});
+
+			// Form input handlers
+			if (slugInput) slugInput.addEventListener('input', () => { userEditedSlug = true; });
+			if (titleInput) titleInput.addEventListener('input', () => { 
+				if (!userEditedSlug) { 
+					slugInput.value = smartSlug(titleInput.value.trim()); 
+				} 
+				if (livePreviewCheckbox && livePreviewCheckbox.checked) showPreview(); 
+			});
+			if (imageInput) imageInput.addEventListener('input', () => { 
+				if (livePreviewCheckbox && livePreviewCheckbox.checked) showPreview(); 
+			});
+			if (bodyInput) bodyInput.addEventListener('input', () => { 
+				if (livePreviewCheckbox && livePreviewCheckbox.checked) showPreview(); 
+			});
+
+			// Live preview
+			if (livePreviewCheckbox) livePreviewCheckbox.addEventListener('change', () => {
+				if (livePreviewCheckbox.checked) showPreview();
+			});
+
+			// Import handlers
+			if (importMdInput) importMdInput.addEventListener('change', async (e) => {
+				const file = e.target.files && e.target.files[0];
+				if (!file) return;
+				const text = await file.text();
+				const { attrs, body } = parseFrontmatter(text);
+				titleInput.value = attrs.title || titleInput.value;
+				dateInput.value = attrs.date || dateInput.value;
+				authorInput.value = attrs.author || '';
+				imageInput.value = attrs.image || '';
+				imageAltInput.value = attrs.imageAlt || '';
+				summaryInput.value = attrs.summary || '';
+				tagsInput.value = Array.isArray(attrs.tags) ? attrs.tags.join(', ') : (attrs.tags || '');
+				bodyInput.value = body || '';
+				const nameMatch = file.name.match(/^(\d{4}-\d{2}-\d{2})-(.+)\.md$/);
+				if (nameMatch) {
+					slugInput.value = nameMatch[2];
+					userEditedSlug = true;
+				} else if (attrs.title) {
+					slugInput.value = smartSlug(attrs.title);
+				}
+				toast('Markdown imported', 'success');
+			});
+
+			// Repo handlers
+			if (connectRepoBtn) connectRepoBtn.addEventListener('click', async () => {
+				if (!apiSupported()) { 
+					toast('File System Access API is not supported in this browser', 'error'); 
+					return; 
+				}
+				try {
+					repoDirHandle = await window.showDirectoryPicker({ id: 'sonce-news-repo' });
+					const ok = await verifyPermission(repoDirHandle, true);
+					if (!ok) { 
+						repoDirHandle = null; 
+						toast('Permission denied', 'error'); 
+						return; 
+					}
+					await ensureDir(repoDirHandle, ['content', 'news']);
+					await ensureDir(repoDirHandle, ['static', 'uploads', 'news']);
+					repoStatusEl.textContent = `Connected: ${repoDirHandle.name}`;
+					saveRepoBtn.disabled = false;
+					rebuildIndexBtn.disabled = false;
+					toast('Repo connected', 'success');
+				} catch (err) { 
+					console.error(err); 
+					toast('Failed to connect to folder', 'error'); 
+				}
+			});
+
+			if (saveRepoBtn) saveRepoBtn.addEventListener('click', async () => {
+				if (!repoDirHandle) { 
+					toast('Connect a repo folder first', 'error'); 
+					return; 
+				}
+				const md = buildMarkdown();
+				if (!md) return;
+				try {
+					const date = dateInput.value;
+					const yyyy = date.slice(0, 4);
+					const mm = date.slice(5, 7);
+					const slug = getEffectiveSlug();
+					slugInput.value = slug;
+
+					const newsDir = await ensureDir(repoDirHandle, ['content', 'news']);
+
+					// Optional hero copy
+					if (imageFileInput && imageFileInput.files && imageFileInput.files[0]) {
+						const img = imageFileInput.files[0];
+						const imgUrl = await copyAttachmentToRepo(img, yyyy, mm, date, `${slug || 'post'}-hero`);
+						imageInput.value = imageInput.value.trim() || imgUrl;
+					}
+
+					// Optional attachments copy
+					if (attachmentsInput && attachmentsInput.files && attachmentsInput.files.length) {
+						for (let i = 0; i < attachmentsInput.files.length; i++) {
+							const f = attachmentsInput.files[i];
+							await copyAttachmentToRepo(f, yyyy, mm, date, `${slug || 'post'}-att-${String(i + 1).padStart(2, '0')}`);
+						}
+					}
+
+					// Versioning based on existing files
+					const existingNames = await listFileNames(newsDir);
+					const baseName = `${date}-${slug || 'post'}.md`;
+					const filename = getVersionedFilename(baseName, existingNames);
+					await writeFile(newsDir, filename, new Blob([md], { type: 'text/markdown;charset=utf-8' }));
+					await updateIndexJson(repoDirHandle, filename);
+					repoStatusEl.textContent = `Saved: ${filename}`;
+					toast('Saved to repo', 'success');
+					await saveSnapshot('Auto snapshot on Save to Repo');
+				} catch (err) { 
+					console.error(err); 
+					toast('Save failed. See console for details', 'error'); 
+				}
+			});
+
+			if (rebuildIndexBtn) rebuildIndexBtn.addEventListener('click', async () => {
+				if (!repoDirHandle) { 
+					toast('Connect a repo folder first', 'error'); 
+					return; 
+				}
+				try { 
+					await rebuildIndex(repoDirHandle); 
+					toast('Index rebuilt', 'success'); 
+				}
+				catch (err) { 
+					console.error(err); 
+					toast('Rebuild failed. See console for details', 'error'); 
+				}
+			});
+
+			// Template handlers
+			if (saveTemplateBtn) saveTemplateBtn.addEventListener('click', () => {
+				const name = templateNameInput.value.trim();
+				if (!name) { 
+					toast('Enter a template name', 'error'); 
+					return; 
+				}
+				const templates = loadTemplates();
+				templates.push({ name, payload: currentFormToTemplatePayload() });
+				saveTemplates(templates);
+				templateNameInput.value = '';
+				toast('Template saved', 'success');
+			});
+
+			if (applyTemplateBtn) applyTemplateBtn.addEventListener('click', () => {
+				const idx = templateSelect.value;
+				if (idx === '') return;
+				const templates = loadTemplates();
+				const t = templates[Number(idx)];
+				applyTemplatePayload(t && t.payload);
+			});
+
+			if (deleteTemplateBtn) deleteTemplateBtn.addEventListener('click', () => {
+				const idx = templateSelect.value;
+				if (idx === '') return;
+				const templates = loadTemplates();
+				templates.splice(Number(idx), 1);
+				saveTemplates(templates);
+			});
+
+			// Draft handlers
+			if (addDraftBtn) addDraftBtn.addEventListener('click', () => {
+				const md = buildMarkdown();
+				if (!md) return;
+				const slug = getEffectiveSlug();
+				const base = `${dateInput.value}-${slug || 'post'}.md`;
+				const drafts = loadDrafts();
+				const existing = drafts.map(d => d.filename);
+				const filename = getVersionedFilename(base, existing);
+				drafts.push({ filename, content: md });
+				saveDrafts(drafts);
+				toast(`Saved as draft: ${filename}`, 'success');
+			});
+
+			if (clearDraftsBtn) clearDraftsBtn.addEventListener('click', () => {
+				if (!confirm('Clear all drafts?')) return;
+				saveDrafts([]);
+			});
+
+			if (downloadZipBtn) downloadZipBtn.addEventListener('click', () => {
+				const drafts = loadDrafts();
+				if (drafts.length === 0) { 
+					toast('No drafts to download', 'error'); 
+					return; 
+				}
+				const encoder = new TextEncoder();
+				const files = drafts.flatMap(d => {
+					const html = renderMarkdown((d.content || '').replace(/^---[\s\S]*?---\n?/, ''));
+					const manifest = JSON.stringify({ 
+						schemaVersion: '1.0.0', 
+						generator: { name: 'sonce-news-editor', version: '0.1.0' }, 
+						post: { file: 'post.md', html: 'post.html' } 
+					}, null, 2);
+					const baseDir = d.filename.replace(/\.md$/,'');
+					return [
+						{ name: `${baseDir}/post.md`, data: encoder.encode(d.content) },
+						{ name: `${baseDir}/post.html`, data: encoder.encode(html) },
+						{ name: `${baseDir}/manifest.json`, data: encoder.encode(manifest) },
+					];
+				});
+				downloadsZip(files);
+			});
+
+			// Toolbar handlers
+			if (toolbar) toolbar.addEventListener('click', (e) => {
+				const btn = e.target.closest('button');
+				if (!btn) return;
+				const action = btn.dataset.md;
+				switch (action) {
+					case 'h1': insertAtCursor(bodyInput, '# ', ''); break;
+					case 'h2': insertAtCursor(bodyInput, '## ', ''); break;
+					case 'h3': insertAtCursor(bodyInput, '### ', ''); break;
+					case 'bold': insertAtCursor(bodyInput, '**', '**', 'bold'); break;
+					case 'italic': insertAtCursor(bodyInput, '*', '*', 'italic'); break;
+					case 'ul': insertAtCursor(bodyInput, '- ', ''); break;
+					case 'ol': insertAtCursor(bodyInput, '1. ', ''); break;
+					case 'quote': insertAtCursor(bodyInput, '> ', ''); break;
+					case 'code': insertAtCursor(bodyInput, '```\n', '\n```', 'code'); break;
+					case 'link': insertAtCursor(bodyInput, '[', '](https://)', 'text'); break;
+					default: break;
+				}
+			});
+
+			if (insertHeroBtn) insertHeroBtn.addEventListener('click', () => {
+				const url = imageInput.value.trim();
+				const alt = imageAltInput.value.trim() || titleInput.value.trim();
+				if (!url) { 
+					toast('No hero image URL set', 'error'); 
+					return; 
+				}
+				insertAtCursor(bodyInput, `![${alt}](${url})\n\n`, '');
+				toast('Hero image inserted');
+			});
+
+			if (insertAttachmentsBtn) insertAttachmentsBtn.addEventListener('click', async () => {
+				if (!attachmentsInput || !attachmentsInput.files || attachmentsInput.files.length === 0) { 
+					toast('No attachments selected', 'error'); 
+					return; 
+				}
+				const date = dateInput.value;
+				const yyyy = date.slice(0, 4);
+				const mm = date.slice(5, 7);
+				const slug = getEffectiveSlug();
+				let lines = '';
+				for (let i = 0; i < attachmentsInput.files.length; i++) {
+					const f = attachmentsInput.files[i];
+					const defaultAlt = f.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+					const alt = await quickPrompt('Alt text for image', defaultAlt);
+					if (alt) {
+						let url = '';
+						if (repoDirHandle) {
+							const baseName = `${slug || 'post'}-att-${String(i + 1).padStart(2, '0')}`;
+							url = await copyAttachmentToRepo(f, yyyy, mm, date, baseName);
+						} else {
+							url = URL.createObjectURL(f);
+						}
+						trackedAssets.push({ file: f, name: f.name, alt });
+						lines += `![${alt}](${url})\n\n`;
+					}
+				}
+				if (lines) {
+					insertAtCursor(bodyInput, lines, '');
+					toast('Attachments inserted', 'success');
+				}
+			});
+
+			// Tag suggestions
+			if (titleInput) titleInput.addEventListener('input', suggestTags);
+			if (bodyInput) bodyInput.addEventListener('input', suggestTags);
+			if (tagSuggestionsEl) tagSuggestionsEl.addEventListener('click', (e) => {
+				const chip = e.target.closest('.chip');
+				if (!chip) return;
+				const tag = chip.dataset.tag;
+				const tags = parseTags(tagsInput.value);
+				if (!tags.includes(tag)) tags.push(tag);
+				tagsInput.value = tags.join(', ');
+			});
+
+			// Validation & lint panel
+			if (bodyInput) bodyInput.addEventListener('input', renderLintPanel);
+			if (summaryInput) summaryInput.addEventListener('input', renderLintPanel);
+
+			// Drag & drop and paste
+			if (dropZone) dropZone.addEventListener('drop', async (e) => {
+				showDropOverlay(false); 
+				dropZone.classList.remove('dragover');
+				const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+				if (!files.length) { 
+					toast('No images dropped', 'error'); 
+					return; 
+				}
+				for (const f of files) {
+					const defaultAlt = f.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+					const alt = await quickPrompt('Alt text for image', defaultAlt);
+					await insertImageAsset(f, alt || defaultAlt);
+				}
+				toast('Images inserted', 'success');
+			});
+
+			// Paste handler
+			window.addEventListener('paste', async (e) => {
+				const items = e.clipboardData && e.clipboardData.items ? [...e.clipboardData.items] : [];
+				const images = items.filter(i => i.type && i.type.startsWith('image/')).map(i => i.getAsFile()).filter(Boolean);
+				if (!images.length) return;
+				for (const f of images) {
+					const defaultAlt = 'pasted image';
+					const alt = await quickPrompt('Alt text for pasted image', defaultAlt);
+					await insertImageAsset(f, alt || defaultAlt);
+				}
+				toast('Pasted images inserted', 'success');
+			});
+
+			// Drag and drop overlay
+			['dragenter','dragover'].forEach(evt => {
+				document.addEventListener(evt, (e) => { 
+					e.preventDefault(); 
+					showDropOverlay(true); 
+					if (dropZone) dropZone.classList.add('dragover'); 
+				});
+			});
+			
+			['dragleave','drop'].forEach(evt => {
+				document.addEventListener(evt, (e) => { 
+					e.preventDefault(); 
+					if (evt === 'drop') return; 
+					showDropOverlay(false); 
+					if (dropZone) dropZone.classList.remove('dragover'); 
+				});
+			});
+
+			// Force hide button
+			const forceHideBtn = document.getElementById('force-hide-overlay');
+			if (forceHideBtn) {
+				forceHideBtn.addEventListener('click', () => {
+					showDropOverlay(false);
+					toast('Overlay manually hidden', 'info');
+				});
+			}
+
+			// Keyboard shortcuts
+			document.addEventListener('keydown', (e) => {
+				const isMac = navigator.platform.toUpperCase().indexOf('MAC')>=0;
+				const mod = isMac ? e.metaKey : e.ctrlKey;
+				if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); if (downloadBtn) downloadBtn.click(); }
+				if (mod && e.key.toLowerCase() === 'p') { e.preventDefault(); if (livePreviewCheckbox) { livePreviewCheckbox.checked = !livePreviewCheckbox.checked; if (livePreviewCheckbox.checked) showPreview(); } }
+				if (mod && e.key.toLowerCase() === 'b') { e.preventDefault(); insertAtCursor(bodyInput, '**', '**', 'bold'); }
+				if (mod && e.key.toLowerCase() === 'i') { e.preventDefault(); insertAtCursor(bodyInput, '*', '*', 'italic'); }
+				if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); insertAtCursor(bodyInput, '[', '](https://)', 'text'); }
+				if (mod && e.shiftKey && e.key.toLowerCase() === 'i') { e.preventDefault(); if (insertAttachmentsBtn) insertAttachmentsBtn.click(); }
+				if (mod && e.key.toLowerCase() === 'e') { e.preventDefault(); if (exportBundleBtn) exportBundleBtn.click(); }
+				if (mod && e.altKey && e.key === '2') { e.preventDefault(); insertAtCursor(bodyInput, '## ', ''); }
+				if (mod && e.altKey && e.key === '3') { e.preventDefault(); insertAtCursor(bodyInput, '### ', ''); }
+				if (mod && e.altKey && e.key === '4') { e.preventDefault(); insertAtCursor(bodyInput, '#### ', ''); }
+				
+				// Force hide overlay
+				if (e.ctrlKey && e.shiftKey && e.key === 'H') {
+					showDropOverlay(false);
+					toast('Overlay hidden with keyboard shortcut', 'info');
+				}
+				
+				// Force close modal
+				if (e.ctrlKey && e.shiftKey && e.key === 'M') {
+					e.preventDefault();
+					closeModal();
+				}
+			});
+
+			// Additional safety: hide overlay on various events
+			window.addEventListener('blur', () => showDropOverlay(false));
+			window.addEventListener('error', () => showDropOverlay(false));
+			window.addEventListener('load', () => showDropOverlay(false));
+
+			console.log('Event handlers set up successfully');
+		} catch (error) {
+			console.error('Failed to setup event handlers:', error);
+			toast('Failed to setup event handlers', 'error');
+		}
 	}
 })();
