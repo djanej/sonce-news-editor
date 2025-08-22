@@ -409,6 +409,12 @@ button.primary::before {
 	animation: slideDown 0.3s ease-out;
 }
 
+/* Ensure hidden attribute hides restore banner */
+.restore-banner[hidden] {
+	display: none !important;
+	visibility: hidden !important;
+}
+
 @keyframes slideDown {
 	from {
 		opacity: 0;
