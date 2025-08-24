@@ -1,0 +1,21 @@
+[
+  {
+    "id": "2025-08-24-cli-test-post",
+    "title": "CLI Test Post",
+    "date": "2025-08-24",
+    "author": "CLI Bot",
+    "summary": "A short CLI test",
+    "image": "",
+    "imageAlt": "",
+    "tags": [
+      "news",
+      "tests"
+    ],
+    "slug": "cli-test-post",
+    "filename": "2025-08-24-cli-test-post.md",
+    "path": "/content/news/2025-08-24-cli-test-post.md",
+    "link": "/content/news/2025-08-24-cli-test-post.md",
+    "readingTimeMinutes": 1,
+    "readingTimeLabel": "1 min"
+  }
+]

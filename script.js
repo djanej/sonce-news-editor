@@ -34,7 +34,7 @@
 	// DOM element references - will be initialized when DOM is ready
 	let form, titleInput, dateInput, authorInput, slugInput, imageInput, imageAltInput, tagsInput, summaryInput, bodyInput;
 	let imageFileInput, attachmentsInput, importMdInput;
-	let previewBtn, downloadBtn, copyJsonBtn, downloadJsonBtn, previewContent, livePreviewCheckbox;
+	let previewBtn, downloadBtn, copyMdBtn, copyJsonBtn, downloadJsonBtn, previewContent, livePreviewCheckbox;
 	let connectRepoBtn, repoStatusEl, saveRepoBtn, rebuildIndexBtn;
 	let templateSelect, applyTemplateBtn, deleteTemplateBtn, saveTemplateBtn, templateNameInput;
 	let addDraftBtn, clearDraftsBtn, downloadZipBtn, draftsCountEl;
@@ -85,6 +85,7 @@
 
 		previewBtn = document.getElementById('preview-btn');
 		downloadBtn = document.getElementById('download-btn');
+		copyMdBtn = document.getElementById('copy-md-btn');
 		copyJsonBtn = document.getElementById('copy-json-btn');
 		downloadJsonBtn = document.getElementById('download-json-btn');
 		previewContent = document.getElementById('preview-content');
@@ -527,6 +528,11 @@
 			errors.push('Body content is required');
 		}
 		
+		const imageVal = imageInput.value.trim();
+		if (imageVal && !isValidUrl(imageVal)) {
+			errors.push('Hero Image URL must be absolute or root-relative');
+		}
+		
 		return errors;
 	}
 
@@ -553,7 +559,6 @@
 	}
 
 	function buildMarkdown() {
-		if (!validateForm()) return null;
 		const title = titleInput.value.trim();
 		const date = dateInput.value;
 		const author = authorInput.value.trim();
@@ -642,6 +647,23 @@
 		}
 	}
 
+	function copyMarkdown() {
+		const errors = validateForm();
+		if (errors.length > 0) { showFormErrors(errors); return; }
+		try {
+			const md = buildMarkdown();
+			navigator.clipboard.writeText(md).then(() => {
+				toast('Markdown copied to clipboard', 'success');
+			}).catch((err) => {
+				console.error('Copy failed:', err);
+				toast('Failed to copy markdown', 'error');
+			});
+		} catch (error) {
+			console.error('Copy failed:', error);
+			toast('Failed to copy markdown', 'error');
+		}
+	}
+
 	function downloadJsonEntry() {
 		const entry = buildIndexEntry();
 		const json = JSON.stringify(entry, null, 2);
@@ -705,34 +727,10 @@
 
 	// Enhanced preview function with validation
 	function showPreview() {
-		const errors = validateForm();
-		if (errors.length > 0) {
-			showFormErrors(errors);
-			return;
-		}
-		
 		try {
-			const md = buildMarkdown();
-			if (!md) {
-				previewContent.innerHTML = '<div class="placeholder"><span class="placeholder-icon">⚠️</span><p>Failed to generate preview</p></div>';
-				return;
-			}
-			
-			// Simple markdown to HTML conversion for preview
-			let html = md.replace(/^---[\s\S]*?---\n?/, ''); // Remove frontmatter
-			html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
-			html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-			html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-			html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-			html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-			html = html.replace(/`(.*?)`/g, '<code>$1</code>');
-			html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
-			html = html.replace(/^(\d+)\. (.*$)/gim, '<li>$2</li>');
-			html = html.replace(/\n\n/g, '</p><p>');
-			html = html.replace(/^(.+)$/gm, '<p>$1</p>');
-			html = html.replace(/<p><\/p>/g, '');
-			
-			previewContent.innerHTML = html;
+			const body = bodyInput.value || '';
+			const html = renderMarkdown(body);
+			previewContent.innerHTML = html || '<div class="placeholder"><span class="placeholder-icon">📝</span><p>Nothing to preview yet.</p></div>';
 		} catch (error) {
 			console.error('Preview failed:', error);
 			previewContent.innerHTML = '<div class="placeholder"><span class="placeholder-icon">⚠️</span><p>Failed to generate preview</p></div>';
@@ -1420,6 +1418,7 @@
 			// Main action buttons
 			if (previewBtn) previewBtn.addEventListener('click', showPreview);
 			if (downloadBtn) downloadBtn.addEventListener('click', downloadMarkdown);
+			if (copyMdBtn) copyMdBtn.addEventListener('click', copyMarkdown);
 			if (copyJsonBtn) copyJsonBtn.addEventListener('click', copyJsonEntry);
 			if (downloadJsonBtn) downloadJsonBtn.addEventListener('click', downloadJsonEntry);
 			if (exportBundleBtn) exportBundleBtn.addEventListener('click', exportBundle);
@@ -1557,6 +1556,10 @@
 					return; 
 				}
 				
+				// Validate before saving
+				const errs = validateForm();
+				if (errs.length) { showFormErrors(errs); return; }
+				
 				// Prevent race conditions
 				if (saveRepoBtn.disabled) return;
 				saveRepoBtn.disabled = true;
@@ -1649,6 +1652,7 @@
 				templates.push({ name, payload: currentFormToTemplatePayload() });
 				saveTemplates(templates);
 				templateNameInput.value = '';
+				refreshTemplateSelect();
 				toast('Template saved', 'success');
 			});
 
@@ -1666,12 +1670,15 @@
 				const templates = loadTemplates();
 				templates.splice(Number(idx), 1);
 				saveTemplates(templates);
+				refreshTemplateSelect();
+				toast('Template deleted', 'success');
 			});
 
 			// Draft handlers
 			if (addDraftBtn) addDraftBtn.addEventListener('click', () => {
+				const errs = validateForm();
+				if (errs.length) { showFormErrors(errs); return; }
 				const md = buildMarkdown();
-				if (!md) return;
 				const slug = getEffectiveSlug();
 				const base = `${dateInput.value}-${slug || 'post'}.md`;
 				const drafts = loadDrafts();
@@ -1679,12 +1686,15 @@
 				const filename = getVersionedFilename(base, existing);
 				drafts.push({ filename, content: md });
 				saveDrafts(drafts);
+				updateDraftsCount();
 				toast(`Saved as draft: ${filename}`, 'success');
 			});
 
 			if (clearDraftsBtn) clearDraftsBtn.addEventListener('click', () => {
 				if (!confirm('Clear all drafts?')) return;
 				saveDrafts([]);
+				updateDraftsCount();
+				toast('All drafts cleared', 'success');
 			});
 
 			if (downloadZipBtn) downloadZipBtn.addEventListener('click', () => {
