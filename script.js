@@ -452,9 +452,10 @@
 
 	function escapeYamlString(value) {
 		if (value == null) return '';
-		const needsQuotes = /[:#\-?\[\]{}&,*>!|%@`\n\r\t]/.test(value) || value.includes('"');
-		const escaped = value.replace(/"/g, '\\"');
-		return needsQuotes ? `"${escaped}"` : value;
+		const s = String(value);
+		const needsQuotes = /[:#\-?\[\]{}&,*>!|%@`\n\r\t]/.test(s) || s.includes('"');
+		const escaped = s.replace(/"/g, '\\"');
+		return needsQuotes ? `"${escaped}"` : s;
 	}
 
 	function estimateReadingTime(text) {
@@ -486,11 +487,29 @@
 		return (lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated) + '…';
 	}
 
+	function escapeHtml(input) {
+		return String(input || '')
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;');
+	}
+
+	function sanitizeUrl(url) {
+		const u = String(url || '').trim();
+		if (!u) return '#';
+		if (/^(https?:|blob:|data:image\/|\/)/i.test(u)) return u;
+		if (/^[a-z][a-z0-9+.-]*:/i.test(u)) return '#';
+		return u;
+	}
+
 	function buildFrontmatter({ title, date, author, image, imageAlt, tags, summary }) {
 		const lines = [
 			'---',
 			`title: ${escapeYamlString(title)}`,
 			`date: ${date}`,
+			`slug: ${escapeYamlString(getEffectiveSlug() || 'post')}`,
 		];
 		if (author) lines.push(`author: ${escapeYamlString(author)}`);
 		if (image) lines.push(`image: ${escapeYamlString(image)}`);
@@ -509,7 +528,11 @@
 
 	function isValidUrl(value) {
 		if (!value) return true;
-		try { new URL(value, window.location.origin); return true; } catch { return false; }
+		try { 
+			const u = new URL(value, window.location.origin); 
+			if (u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === 'blob:' || (u.protocol === 'data:' && /^data:image\//i.test(value)) || value.startsWith('/')) return true; 
+			return false;
+		} catch { return false; }
 	}
 
 	// Form validation
@@ -568,7 +591,8 @@
 		const body = bodyInput.value.trim();
 		const summary = (summaryInput.value || '').trim() || generateSummaryFromBody(body);
 
-		const frontmatter = buildFrontmatter({ title, date, author, image, imageAlt, tags, summary });
+		const slug = getEffectiveSlug() || 'post';
+		const frontmatter = buildFrontmatter({ title, date, author, image, imageAlt, tags, summary, slug });
 		const content = body ? `\n${body}\n` : '\n';
 		return `${frontmatter}${content}`;
 	}
@@ -694,16 +718,19 @@
 	// Markdown preview
 	function renderMarkdown(md) {
 		let html = md
-			.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
-			.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
-			.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
-			.replace(/^>\s?(.+)$/gm, '<blockquote>$1</blockquote>')
-			.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-			.replace(/`([^`]+)`/g, '<code>$1</code>')
-			.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-			.replace(/\*([^*]+)\*/g, '<em>$1</em>')
-			.replace(/!\[(.*?)\]\((.*?)\)/g, (m, alt, src) => `<img src="${src}" alt="${alt}"/>`)
-			.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1<\/a>');
+			.replace(/^######\s+(.+)$/gm, (m, t) => `<h6>${escapeHtml(t)}</h6>`)
+			.replace(/^#####\s+(.+)$/gm, (m, t) => `<h5>${escapeHtml(t)}</h5>`)
+			.replace(/^####\s+(.+)$/gm, (m, t) => `<h4>${escapeHtml(t)}</h4>`)
+			.replace(/^###\s+(.+)$/gm, (m, t) => `<h3>${escapeHtml(t)}</h3>`)
+			.replace(/^##\s+(.+)$/gm, (m, t) => `<h2>${escapeHtml(t)}</h2>`)
+			.replace(/^#\s+(.+)$/gm, (m, t) => `<h1>${escapeHtml(t)}</h1>`)
+			.replace(/^>\s?(.+)$/gm, (m, t) => `<blockquote>${escapeHtml(t)}</blockquote>`)
+			.replace(/```([\s\S]*?)```/g, (m, code) => `<pre><code>${escapeHtml(code)}</code></pre>`)
+			.replace(/`([^`]+)`/g, (m, code) => `<code>${escapeHtml(code)}</code>`)
+			.replace(/\*\*([^*]+)\*\*/g, (m, t) => `<strong>${escapeHtml(t)}</strong>`)
+			.replace(/\*([^*]+)\*/g, (m, t) => `<em>${escapeHtml(t)}</em>`)
+			.replace(/!\[(.*?)\]\((.*?)\)/g, (m, alt, src) => `<img src="${sanitizeUrl(src)}" alt="${escapeHtml(alt)}"/>`)
+			.replace(/\[(.*?)\]\((.*?)\)/g, (m, text, href) => `<a href="${sanitizeUrl(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(text)}<\/a>`);
 
 		// Lists
 		html = html
@@ -719,7 +746,7 @@
 		// Paragraphs
 		html = html
 			.split(/\n{2,}/)
-			.map(block => /<h\d|<ul>|<ol>|<pre>|<blockquote>|<img|<a /.test(block) ? block : `<p>${block.replace(/\n/g, '<br/>')}</p>`)
+			.map(block => /<h\d|<ul>|<ol>|<pre>|<blockquote>|<img|<a \/|<strong>|<em>|<code>/.test(block) ? block : `<p>${escapeHtml(block).replace(/\n/g, '<br/>')}</p>`)
 			.join('\n');
 
 		return html;
@@ -1802,6 +1829,8 @@
 
 			// Drag & drop and paste
 			if (dropZone) dropZone.addEventListener('drop', async (e) => {
+				e.preventDefault();
+				e.stopPropagation();
 				showDropOverlay(false); 
 				dropZone.classList.remove('dragover');
 				const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
@@ -1847,6 +1876,16 @@
 					if (dropZone) dropZone.classList.remove('dragover'); 
 				});
 			});
+
+			// Improve drop zone dragover behavior
+			if (dropZone) {
+				dropZone.addEventListener('dragover', (e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+					dropZone.classList.add('dragover');
+				});
+			}
 
 			// Force hide button
 			const forceHideBtn = document.getElementById('force-hide-overlay');

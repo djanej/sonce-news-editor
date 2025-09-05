@@ -59,12 +59,13 @@ function generateSummaryFromBody(body, maxLen = 200) {
 	return (lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated) + '…';
 }
 
-function buildFrontmatter({ title, date, author, image, imageAlt, tags, summary }) {
+function buildFrontmatter({ title, date, author, image, imageAlt, tags, summary, slug }) {
 	const lines = [
 		'---',
 		`title: ${escapeYamlString(title)}`,
 		`date: ${date}`,
 	];
+	if (slug) lines.push(`slug: ${escapeYamlString(slug)}`);
 	if (author) lines.push(`author: ${escapeYamlString(author)}`);
 	if (image) lines.push(`image: ${escapeYamlString(image)}`);
 	if (imageAlt) lines.push(`imageAlt: ${escapeYamlString(imageAlt)}`);
@@ -219,7 +220,7 @@ async function createPost(opts) {
 
 	const summary = (opts.summary || '').trim() || generateSummaryFromBody(body);
 	const tags = parseTags(opts.tags || '');
-	const fm = buildFrontmatter({ title: opts.title, date, author: opts.author, image, imageAlt: opts.imageAlt || '', tags, summary });
+	const fm = buildFrontmatter({ title: opts.title, date, author: opts.author, image, imageAlt: opts.imageAlt || '', tags, summary, slug });
 	const content = fm + '\n' + (body ? body + '\n' : '');
 	const full = path.join(newsDir, filename);
 	await fs.writeFile(full, content, 'utf8');
