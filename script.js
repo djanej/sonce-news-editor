@@ -572,6 +572,9 @@
 			if (!ok) {
 				errors.push('Hero image path must be /static/uploads/news/YYYY/MM/YYYY-MM-DD-slug-hero.ext');
 			}
+			if (!imageAltInput.value.trim()) {
+				errors.push('Image Alt Text is required when a hero image is set');
+			}
 		}
 
 		const summaryVal = (summaryInput.value || '').trim();
@@ -883,7 +886,9 @@
 
 	async function copyAttachmentToRepo(file, yyyy, mm, date, baseName) {
 		const imgDir = await ensureDir(repoDirHandle, ['static', 'uploads', 'news', yyyy, mm]);
-		const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
+		let ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
+		const allowed = new Set(['jpg','jpeg','png','gif','webp','svg']);
+		if (!allowed.has(ext)) ext = 'png';
 		const fname = `${date}-${baseName}.${ext}`;
 		await writeFile(imgDir, fname, file);
 		return `/static/uploads/news/${yyyy}/${mm}/${fname}`;
