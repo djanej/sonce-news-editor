@@ -147,7 +147,9 @@ async function copyIfLocalImage(imagePathOrUrl, rootDir, date, slug) {
 	const abs = path.resolve(process.cwd(), imagePathOrUrl);
 	const yyyy = date.slice(0, 4);
 	const mm = date.slice(5, 7);
-	const ext = path.extname(abs) || '.png';
+	let ext = (path.extname(abs) || '.png').toLowerCase();
+	const allowedExts = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']);
+	if (!allowedExts.has(ext)) ext = '.png';
 	const uploadsDir = path.join(rootDir, 'static', 'uploads', 'news', yyyy, mm);
 	await ensureDir(uploadsDir);
 	const target = path.join(uploadsDir, `${date}-${slug}-hero${ext}`);
@@ -178,6 +180,7 @@ async function buildIndex(rootDir) {
 				date,
 				author: (attrs.author || '').trim(),
 				summary,
+				hero: (attrs.image || '').trim(),
 				image: (attrs.image || '').trim(),
 				imageAlt: (attrs.imageAlt || '').trim(),
 				tags,
