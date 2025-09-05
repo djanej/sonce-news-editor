@@ -542,9 +542,24 @@
 		if (!titleInput.value.trim()) {
 			errors.push('Title is required');
 		}
+		const titleTrimmed = titleInput.value.trim();
+		if (titleTrimmed && titleTrimmed.length > 100) {
+			errors.push('Title must be 100 characters or less');
+		}
 		
 		if (!dateInput.value) {
 			errors.push('Date is required');
+		}
+		const dateVal = dateInput.value;
+		if (dateVal) {
+			if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
+				errors.push('Date must be in YYYY-MM-DD format');
+			} else {
+				const [yy, mm, dd] = dateVal.split('-').map(Number);
+				const dt = new Date(Date.UTC(yy, mm - 1, dd));
+				const valid = dt.getUTCFullYear() === yy && (dt.getUTCMonth() + 1) === mm && dt.getUTCDate() === dd;
+				if (!valid) errors.push('Date is not a valid calendar date');
+			}
 		}
 		
 		if (!bodyInput.value.trim()) {
@@ -552,8 +567,19 @@
 		}
 		
 		const imageVal = imageInput.value.trim();
-		if (imageVal && !isValidUrl(imageVal)) {
-			errors.push('Hero Image URL must be absolute or root-relative');
+		if (imageVal) {
+			const ok = /^\/static\/uploads\/news\/\d{4}\/\d{2}\/[A-Za-z0-9._-]+\.(?:jpg|jpeg|png|gif|webp|svg)$/i.test(imageVal);
+			if (!ok) {
+				errors.push('Hero image path must be /static/uploads/news/YYYY/MM/YYYY-MM-DD-slug-hero.ext');
+			}
+			if (!imageAltInput.value.trim()) {
+				errors.push('Image Alt Text is required when a hero image is set');
+			}
+		}
+
+		const summaryVal = (summaryInput.value || '').trim();
+		if (summaryVal && summaryVal.length > 200) {
+			errors.push('Summary must be 200 characters or less');
 		}
 		
 		return errors;
@@ -612,6 +638,7 @@
 			date,
 			author: (authorInput.value || '').trim(),
 			summary,
+			hero: (imageInput.value || '').trim(),
 			image: (imageInput.value || '').trim(),
 			imageAlt: (imageAltInput.value || '').trim(),
 			tags,
@@ -859,7 +886,9 @@
 
 	async function copyAttachmentToRepo(file, yyyy, mm, date, baseName) {
 		const imgDir = await ensureDir(repoDirHandle, ['static', 'uploads', 'news', yyyy, mm]);
-		const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
+		let ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
+		const allowed = new Set(['jpg','jpeg','png','gif','webp','svg']);
+		if (!allowed.has(ext)) ext = 'png';
 		const fname = `${date}-${baseName}.${ext}`;
 		await writeFile(imgDir, fname, file);
 		return `/static/uploads/news/${yyyy}/${mm}/${fname}`;
@@ -1055,6 +1084,7 @@
 					date,
 					author: (attrs.author || '').trim(),
 					summary,
+					hero: (attrs.image || '').trim(),
 					image: (attrs.image || '').trim(),
 					imageAlt: (attrs.imageAlt || '').trim(),
 					tags,
